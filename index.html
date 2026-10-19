@@ -76,7 +76,7 @@
       <p class="ws-today-date">${esc(dateLabel)} · ${esc(WS.BROADCAST_TIME)}</p>
       <h2 class="ws-today-song" id="today-h">${esc(data.song.title)}</h2>
       <p class="ws-today-artist">${esc(data.song.artist)}</p>
-      <div class="ws-today-meta"><span class="ws-today-by">신청자 <strong>${esc(data.song.applicantName)}</strong> · 오늘 신청 ${data.requestCount}건</span><a class="ws-btn ws-btn-secondary ws-btn-sm" href="date.html?date=${today}">오늘 신청 전체 보기</a></div>
+      <div class="ws-today-meta"><span class="ws-today-by">신청자 <strong>${esc(data.song.applicantName)}</strong> · 오늘 신청 ${data.requestCount}건</span><a class="ws-btn ws-btn-secondary ws-btn-sm" href="date.html?date=${esc(data.date)}">오늘 신청 전체 보기</a></div>
       <p class="ws-today-note">${icon.info} 오늘 가장 먼저 접수된 신청곡이에요. 실제 방송곡과 다를 수 있어요.</p>
     </section>`;
   }

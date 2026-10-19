@@ -109,7 +109,8 @@
     const input = form.elements[name];
     const counter = fieldEl(name).querySelector('[data-count]');
     input.addEventListener('input', () => {
-      counter.textContent = `${input.value.length}/${WS.LIMITS[name]}`;
+      // 검사·전송과 같은 기준: 앞뒤 공백 제외
+      counter.textContent = `${input.value.trim().length}/${WS.LIMITS[name]}`;
       if (fieldEl(name).dataset.invalid) setError(name, validateField(name));
     });
   });
