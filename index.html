@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>기상송 · 오늘의 기상송</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/common.js"></script>
+</head>
+<body>
+<div class="ws-app">
+  <ws-nav active="main"></ws-nav>
+
+  <main class="ws-container ws-page">
+    <div class="ws-page-head"><h1>좋은 아침이에요</h1><p>오늘 아침 기숙사에 울릴 기상송을 확인하고, 원하는 날의 곡을 신청해 보세요.</p></div>
+
+    <div class="ws-grid-2">
+      <div id="today"></div>
+
+      <div class="ws-stack">
+        <section class="ws-card">
+          <h3 class="ws-card-title">내 노래로 일어나고 싶다면</h3>
+          <p class="ws-card-text">날짜를 고르고 곡 제목과 가수만 적으면 끝. 로그인은 필요 없어요.</p>
+          <a class="ws-btn ws-btn-primary ws-btn-block" href="request.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> 기상송 신청하기</a>
+        </section>
+        <section class="ws-card" aria-labelledby="week-h">
+          <h3 class="ws-card-title" id="week-h">이번 주 신청 현황</h3>
+          <div id="week"></div>
+          <a class="ws-btn ws-btn-secondary ws-btn-block ws-btn-sm ws-card-action" href="calendar.html">달력으로 보기</a>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+(function () {
+  const { api, esc, icon } = WS;
+  let today = WS.todayISO();
+  const todayEl = document.getElementById('today');
+  const weekEl = document.getElementById('week');
+
+  /* ---------- TodayCard ---------- */
+  function todaySkeleton() {
+    todayEl.innerHTML = `<section class="ws-today" aria-busy="true" aria-label="오늘의 기상송 불러오는 중">
+      <div class="ws-skel ws-skel-badge"></div>
+      <div class="ws-skel ws-skel-today-date"></div>
+      <div class="ws-skel ws-skel-today-song"></div>
+      <div class="ws-skel ws-skel-today-artist"></div>
+      <div class="ws-skel ws-skel-today-meta"></div>
+    </section>`;
+  }
+
+  function renderToday(data) {
+    const dateLabel = WS.formatDate(data.date);
+    if (!data.song) {
+      todayEl.innerHTML = `<section class="ws-today ws-today-empty" aria-labelledby="today-h">
+        <span class="ws-badge ws-badge-neutral">${icon.music} 오늘의 기상송</span>
+        <p class="ws-today-date">${esc(dateLabel)}</p>
+        <h2 class="ws-today-song" id="today-h">오늘 신청곡 없음</h2>
+        <p class="ws-today-artist">아직 아무도 신청하지 않았어요. 내일 아침 곡을 먼저 신청해 보세요.</p>
+        <div class="ws-today-meta"><span class="ws-today-by">신청 0건</span><a class="ws-btn ws-btn-primary" href="request.html">${icon.plus} 기상송 신청하기</a></div>
+      </section>`;
+      return;
+    }
+    todayEl.innerHTML = `<section class="ws-today" aria-labelledby="today-h">
+      <span class="ws-badge">${icon.music} 오늘의 기상송</span>
+      <p class="ws-today-date">${esc(dateLabel)} · ${esc(WS.BROADCAST_TIME)}</p>
+      <h2 class="ws-today-song" id="today-h">${esc(data.song.title)}</h2>
+      <p class="ws-today-artist">${esc(data.song.artist)}</p>
+      <div class="ws-today-meta"><span class="ws-today-by">신청자 <strong>${esc(data.song.applicantName)}</strong> · 오늘 신청 ${data.requestCount}건</span><a class="ws-btn ws-btn-secondary ws-btn-sm" href="date.html?date=${encodeURIComponent(data.date)}">오늘 신청 전체 보기</a></div>
+      <p class="ws-today-note">${icon.info} 오늘 가장 먼저 접수된 신청곡이에요. 실제 방송곡과 다를 수 있어요.</p>
+    </section>`;
+  }
+
+  async function loadToday() {
+    todaySkeleton();
+    try {
+      renderToday(await api.getToday());
+    } catch (e) {
+      todayEl.innerHTML = '<section class="ws-card"></section>';
+      WS.showError(todayEl.firstElementChild, '오늘의 기상송을 불러오지 못했어요.', '잠시 후 다시 시도해 주세요.', loadToday);
+    }
+  }
+
+  /* ---------- 이번 주 신청 현황: 내일부터 7일 ---------- */
+  async function loadWeek() {
+    weekEl.innerHTML = WS.skelList(2);
+    weekEl.setAttribute('aria-busy', 'true');
+    const start = WS.addDays(today, 1);
+    const end = WS.addDays(today, 7);
+    const months = [...new Set([WS.monthOf(start), WS.monthOf(end)])];
+    try {
+      const results = await Promise.all(months.map((m) => api.getCalendar(m)));
+      const days = results.flatMap((r) => r.days).filter((d) => d.date >= start && d.date <= end && d.requestCount > 0);
+      if (!days.length) {
+        weekEl.innerHTML = '<p class="ws-week-empty">이번 주는 아직 신청곡이 없어요. 첫 번째로 신청해 보세요.</p>';
+      } else {
+        weekEl.innerHTML = '<ul class="ws-list">' + days.map((d) => `<li class="ws-list-item">
+          <span class="ws-list-order">${WS.parseISO(d.date).d}</span>
+          <a class="ws-list-body ws-list-link" href="date.html?date=${d.date}"><div class="ws-list-title">${esc(d.songs[0].title)}</div><div class="ws-list-sub">${esc(WS.formatDateShort(d.date))} · ${d.requestCount}건</div></a></li>`).join('') + '</ul>';
+      }
+    } catch (e) {
+      WS.showError(weekEl, '신청 현황을 불러오지 못했어요.', '잠시 후 다시 시도해 주세요.', loadWeek);
+    } finally {
+      weekEl.removeAttribute('aria-busy');
+    }
+  }
+
+  // 페이지를 연 채로 자정을 넘기면 새 날짜 기준으로 다시 불러온다
+  WS.onDayChange((now) => {
+    today = now;
+    loadToday();
+    loadWeek();
+  });
+
+  loadToday();
+  loadWeek();
+})();
+</script>
+</body>
+</html>

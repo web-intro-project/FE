@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>기상송 · 신청 완료</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/common.js"></script>
+</head>
+<body>
+<div class="ws-app">
+  <ws-nav active="request"></ws-nav>
+
+  <main class="ws-container ws-page">
+    <section class="ws-card ws-done" id="done" hidden>
+      <div class="ws-done-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <h1 class="ws-done-title">신청이 접수됐어요!</h1>
+      <p class="ws-done-text" id="done-text"></p>
+      <dl class="ws-summary" id="summary"></dl>
+      <div class="ws-done-actions"><a class="ws-btn ws-btn-primary" id="to-date" href="#"></a><a class="ws-btn ws-btn-secondary" href="index.html">메인으로</a></div>
+    </section>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+(function () {
+  const { esc } = WS;
+  let req = null;
+  try { req = JSON.parse(sessionStorage.getItem('wakesong.lastRequest') || 'null'); } catch (_) {}
+
+  // 신청 직후가 아니면(상태 없음) 메인으로
+  if (!req || String(req.id) !== WS.param('id')) { location.replace('index.html'); return; }
+
+  const short = WS.formatDateShort(req.date);
+  document.getElementById('summary').innerHTML =
+    `<dt>날짜</dt><dd>${esc(WS.formatDateFull(req.date))}</dd>` +
+    `<dt>곡 제목</dt><dd>${esc(req.songTitle)}</dd>` +
+    `<dt>가수</dt><dd>${esc(req.artist)}</dd>` +
+    `<dt>신청자</dt><dd>${esc(req.applicantName)}</dd>`;
+  const toDate = document.getElementById('to-date');
+  toDate.href = `date.html?date=${req.date}`;
+  toDate.textContent = `${short} 신청 현황 보기`;
+
+  const text = document.getElementById('done-text');
+  text.textContent = `${short} 신청 목록에 추가됐어요.`;
+  document.getElementById('done').hidden = false;
+
+  // 몇 번째 신청인지는 목록에서 계산 (실패하면 문장만 생략)
+  WS.api.getRequests(req.date).then((data) => {
+    const idx = data.requests.findIndex((r) => String(r.id) === String(req.id));
+    if (idx >= 0) text.textContent = `${short} 신청 목록에 추가됐어요. 이 날짜의 ${idx + 1}번째 신청이에요.`;
+  }).catch(() => {});
+})();
+</script>
+</body>
+</html>
