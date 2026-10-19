@@ -96,18 +96,12 @@
     return handler();
   }
 
-  const LIMITS = { songTitle: 100, artist: 100, applicantName: 20 };
-
-  // 클라이언트와 같은 규칙으로 검사. 첫 오류만 돌려준다.
+  // 클라이언트 폼과 같은 규칙(WS.validateField)으로 검사. 첫 오류만 돌려준다.
   function validate(body) {
-    if (!body.date) return { field: 'date', message: '신청 날짜를 선택해 주세요.' };
-    if (!WS.isValidISO(body.date)) return { field: 'date', message: '날짜 형식이 올바르지 않아요.' };
-    if (body.date < WS.todayISO()) return { field: 'date', message: '지난 날짜는 신청할 수 없어요.' };
-    const names = { songTitle: '곡 제목을', artist: '가수를', applicantName: '신청자 이름을' };
-    for (const f of Object.keys(LIMITS)) {
-      const v = (body[f] || '').trim();
-      if (!v) return { field: f, message: `${names[f]} 입력해 주세요.` };
-      if (v.length > LIMITS[f]) return { field: f, message: `${LIMITS[f]}자 이내로 입력해 주세요.` };
+    const today = WS.todayISO();
+    for (const field of WS.FIELDS) {
+      const message = WS.validateField(field, body[field], today);
+      if (message) return { field, message };
     }
     return null;
   }
@@ -162,5 +156,4 @@
 
   WS.api = USE_MOCK ? mockApi : httpApi;
   WS.ApiError = ApiError;
-  WS.LIMITS = LIMITS;
 })();

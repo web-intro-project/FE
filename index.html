@@ -79,8 +79,8 @@
     try {
       renderToday(await api.getToday());
     } catch (e) {
-      todayEl.innerHTML = `<section class="ws-card">${WS.errorBanner('오늘의 기상송을 불러오지 못했어요.', '잠시 후 다시 시도해 주세요.', true)}</section>`;
-      todayEl.querySelector('[data-retry]').addEventListener('click', loadToday);
+      todayEl.innerHTML = '<section class="ws-card"></section>';
+      WS.showError(todayEl.firstElementChild, '오늘의 기상송을 불러오지 못했어요.', '잠시 후 다시 시도해 주세요.', loadToday);
     }
   }
 
@@ -99,12 +99,10 @@
       } else {
         weekEl.innerHTML = '<ul class="ws-list">' + days.map((d) => `<li class="ws-list-item">
           <span class="ws-list-order">${WS.parseISO(d.date).d}</span>
-          <a class="ws-list-body ws-list-link" href="date.html?date=${d.date}"><div class="ws-list-title">${esc(d.songs[0].title)}</div><div class="ws-list-sub">${esc(WS.formatDateShort(d.date))} · ${d.requestCount}건</div></a>
-          <span></span></li>`).join('') + '</ul>';
+          <a class="ws-list-body ws-list-link" href="date.html?date=${d.date}"><div class="ws-list-title">${esc(d.songs[0].title)}</div><div class="ws-list-sub">${esc(WS.formatDateShort(d.date))} · ${d.requestCount}건</div></a></li>`).join('') + '</ul>';
       }
     } catch (e) {
-      weekEl.innerHTML = WS.errorBanner('신청 현황을 불러오지 못했어요.', '잠시 후 다시 시도해 주세요.', true);
-      weekEl.querySelector('[data-retry]').addEventListener('click', loadWeek);
+      WS.showError(weekEl, '신청 현황을 불러오지 못했어요.', '잠시 후 다시 시도해 주세요.', loadWeek);
     } finally {
       weekEl.removeAttribute('aria-busy');
     }

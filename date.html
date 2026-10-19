@@ -74,8 +74,7 @@
       }
     } catch (e) {
       countEl.textContent = '신청 목록을 불러오지 못했어요.';
-      listEl.innerHTML = WS.errorBanner('신청 목록을 불러오지 못했어요.', '잠시 후 다시 시도해 주세요.', true);
-      listEl.querySelector('[data-retry]').addEventListener('click', load);
+      WS.showError(listEl, '신청 목록을 불러오지 못했어요.', '잠시 후 다시 시도해 주세요.', load);
     } finally {
       listEl.removeAttribute('aria-busy');
     }

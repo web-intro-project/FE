@@ -73,22 +73,52 @@
 
   function param(name) { return new URLSearchParams(location.search).get(name); }
 
+  // 다른 쿼리(?mockFail= 등)는 그대로 두고 name만 바꾼다. 빈 값이면 지운다.
+  function setParam(name, value, push) {
+    const params = new URLSearchParams(location.search);
+    if (value) params.set(name, value); else params.delete(name);
+    const qs = params.toString();
+    history[push ? 'pushState' : 'replaceState'](null, '', qs ? `?${qs}` : location.pathname);
+  }
+
   /* ---------- 아이콘 (선 아이콘, stroke 2, 둥근 끝) ---------- */
   const icon = {
     plus: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
     music: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
     info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
     alert: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></svg>',
-    prev: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>',
-    next: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>',
-    check: '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   };
+
+  /* ---------- 신청 입력 검증 (클라이언트 폼과 목 서버가 같이 쓴다, FR-06) ---------- */
+  const LIMITS = { songTitle: 100, artist: 100, applicantName: 20 };
+  const FIELD_NAMES = { songTitle: '곡 제목을', artist: '가수를', applicantName: '신청자 이름을' };
+  const FIELDS = ['date', 'songTitle', 'artist', 'applicantName'];
+
+  // 오류 메시지를 돌려주고, 문제가 없으면 ''
+  function validateField(name, value, today) {
+    const v = (value || '').trim();
+    if (name === 'date') {
+      if (!v) return '신청 날짜를 선택해 주세요.';
+      if (!isValidISO(v)) return '날짜 형식이 올바르지 않아요.';
+      if (v < today) return '지난 날짜는 신청할 수 없어요.';
+      return '';
+    }
+    if (!v) return `${FIELD_NAMES[name]} 입력해 주세요.`;
+    if (v.length > LIMITS[name]) return `${LIMITS[name]}자 이내로 입력해 주세요.`;
+    return '';
+  }
 
   /* ---------- StatusMessage ---------- */
   function errorBanner(title, body, withRetry) {
     return `<div class="ws-banner ws-banner-error" role="alert">${icon.alert}<div><b>${esc(title)}</b><br>${esc(body)}` +
       (withRetry ? `<div class="ws-banner-actions"><button type="button" class="ws-btn ws-btn-secondary ws-btn-sm" data-retry>다시 시도</button></div>` : '') +
       `</div></div>`;
+  }
+
+  // 오류 배너를 그리고 "다시 시도" 버튼을 onRetry에 연결
+  function showError(el, title, body, onRetry) {
+    el.innerHTML = errorBanner(title, body, !!onRetry);
+    if (onRetry) el.querySelector('[data-retry]').addEventListener('click', onRetry);
   }
 
   function emptyState(title, text, action) {
@@ -98,12 +128,9 @@
   }
 
   function skelList(rows) {
-    let html = '<div class="ws-skel-list">';
-    for (let i = 0; i < rows; i++) {
-      html += '<div class="ws-skel-row"><div class="ws-skel ws-skel-order"></div>' +
-        '<div><div class="ws-skel ws-skel-line-title"></div><div class="ws-skel ws-skel-line-sub"></div></div></div>';
-    }
-    return html + '</div>';
+    const row = '<div class="ws-skel-row"><div class="ws-skel ws-skel-order"></div>' +
+      '<div><div class="ws-skel ws-skel-line-title"></div><div class="ws-skel ws-skel-line-sub"></div></div></div>';
+    return `<div class="ws-skel-list">${row.repeat(rows)}</div>`;
   }
 
   /* ---------- RequestList ---------- */
@@ -134,20 +161,16 @@
   }
 
   /* ---------- 날짜가 바뀌면 알림 (페이지를 연 채로 자정을 넘길 때) ---------- */
-  // 탭으로 돌아올 때와 서울 기준 자정에 확인해서, 바뀌었으면 cb(새 날짜)를 부른다.
+  // 탭 복귀·창 포커스 때와 1분마다 오늘 날짜를 비교해서, 바뀌었으면 cb(새 날짜)를 부른다.
   function onDayChange(cb) {
     let current = todayISO();
-    function check() {
+    const check = () => {
       const now = todayISO();
       if (now !== current) { current = now; cb(now); }
-    }
+    };
     document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
-    const DAY = 24 * 60 * 60 * 1000;
-    const KST_OFFSET = 9 * 60 * 60 * 1000; // Asia/Seoul은 서머타임 없음
-    (function scheduleMidnight() {
-      const untilMidnight = DAY - ((Date.now() + KST_OFFSET) % DAY) + 1000;
-      setTimeout(() => { check(); scheduleMidnight(); }, untilMidnight);
-    })();
+    window.addEventListener('focus', check);
+    setInterval(check, 60000);
   }
 
   /* ---------- NavBar: <ws-nav active="main|request|calendar"> ---------- */
@@ -174,7 +197,9 @@
     onDayChange,
     todayISO, isValidISO, addDays, dowOf, daysInMonth, monthOf, shiftMonth, parseISO,
     formatDate, formatDateFull, formatDateShort, formatMonth, formatTime,
-    esc, param, icon, errorBanner, emptyState, skelList, requestList, setBusy,
+    esc, param, setParam, icon, errorBanner, showError, emptyState, skelList, requestList, setBusy,
+    LIMITS, FIELDS, validateField,
+    DOW,
     BROADCAST_TIME: '오전 6:50',
   });
 })();

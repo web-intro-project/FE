@@ -66,8 +66,7 @@
   const side = document.getElementById('side');
   const dateInput = form.elements.date;
   let today = WS.todayISO();
-  const FIELDS = ['date', 'songTitle', 'artist', 'applicantName'];
-  const NAMES = { songTitle: '곡 제목을', artist: '가수를', applicantName: '신청자 이름을' };
+  const { FIELDS } = WS;
 
   /* ---------- 초기값: ?date= → 없으면 내일 ---------- */
   dateInput.min = today;
@@ -85,16 +84,9 @@
     else { delete el.dataset.invalid; input.removeAttribute('aria-invalid'); }
   }
 
+  // 규칙은 목 서버와 같은 WS.validateField
   function validateField(name) {
-    const v = form.elements[name].value.trim();
-    if (name === 'date') {
-      if (!v || !WS.isValidISO(v)) return '신청 날짜를 선택해 주세요.';
-      if (v < today) return '지난 날짜는 신청할 수 없어요.';
-      return '';
-    }
-    if (!v) return `${NAMES[name]} 입력해 주세요.`;
-    if (v.length > WS.LIMITS[name]) return `${WS.LIMITS[name]}자 이내로 입력해 주세요.`;
-    return '';
+    return WS.validateField(name, form.elements[name].value, today);
   }
 
   /* ---------- 글자 수 카운터 ---------- */
@@ -132,8 +124,7 @@
       }
     } catch (e) {
       if (reqId !== sideReq) return;
-      side.innerHTML = WS.errorBanner('신청 현황을 불러오지 못했어요.', '신청은 그대로 할 수 있어요.', true);
-      side.querySelector('[data-retry]').addEventListener('click', loadSide);
+      WS.showError(side, '신청 현황을 불러오지 못했어요.', '신청은 그대로 할 수 있어요.', loadSide);
     } finally {
       if (reqId === sideReq) side.removeAttribute('aria-busy');
     }
@@ -141,8 +132,7 @@
 
   dateInput.addEventListener('change', () => {
     setError('date', validateField('date'));
-    // 날짜를 비우면 쿼리도 지운다
-    history.replaceState(null, '', dateInput.value ? `?date=${encodeURIComponent(dateInput.value)}` : location.pathname);
+    WS.setParam('date', dateInput.value); // 날짜를 비우면 쿼리도 지운다
     loadSide();
   });
 
@@ -154,20 +144,19 @@
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    refreshToday(); // 페이지를 오래 열어 둔 경우 제출 시점 날짜로 검사
     if (submitBtn.disabled) return;
+    setToday(WS.todayISO()); // 페이지를 오래 열어 둔 경우 제출 시점 날짜로 검사
     showFormError('');
 
+    const body = {};
     let firstInvalid = null;
     FIELDS.forEach((name) => {
+      body[name] = form.elements[name].value.trim();
       const msg = validateField(name);
       setError(name, msg);
       if (msg && !firstInvalid) firstInvalid = name;
     });
     if (firstInvalid) { form.elements[firstInvalid].focus(); return; }
-
-    const body = {};
-    FIELDS.forEach((name) => { body[name] = form.elements[name].value.trim(); });
 
     WS.setBusy(submitBtn, true, '신청 중…');
     try {
@@ -188,17 +177,15 @@
   });
 
   /* ---------- 자정을 넘기면 오늘 기준을 갱신 ---------- */
-  function refreshToday() {
-    const now = WS.todayISO();
-    if (now === today) return false;
+  function setToday(now) {
+    if (now === today) return;
     today = now;
     dateInput.min = today;
     // 이미 고른 날짜가 지난 날짜가 됐으면 바로 알려준다
     if (dateInput.value && dateInput.value < today) setError('date', validateField('date'));
-    return true;
   }
 
-  WS.onDayChange(() => { if (refreshToday()) loadSide(); });
+  WS.onDayChange((now) => { setToday(now); loadSide(); });
 
   loadSide();
 })();

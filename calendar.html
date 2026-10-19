@@ -40,16 +40,19 @@
   const cal = document.getElementById('cal');
   const label = document.getElementById('month-label');
   const errEl = document.getElementById('cal-error');
-  const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
-  const qMonth = WS.param('month');
-  let month = /^\d{4}-(0[1-9]|1[0-2])$/.test(qMonth || '') ? qMonth : WS.monthOf(today);
+  // ?month= 이 YYYY-MM 형식이면 그 달, 아니면 이번 달
+  function resolveMonth(m) {
+    return /^\d{4}-(0[1-9]|1[0-2])$/.test(m || '') ? m : WS.monthOf(today);
+  }
+
+  let month = resolveMonth(WS.param('month'));
   let reqId = 0;
 
   // 요일 머리글은 보이기만 한다. 날짜 버튼의 aria-label에 요일까지 넣어서
   // 스크린 리더는 버튼 목록만 읽으면 된다 (grid/row 구조를 쓰지 않음).
   function head() {
-    return DOW.map((d, i) => `<div class="ws-cal-dow${i === 0 ? ' sun' : ''}" aria-hidden="true">${d}</div>`).join('');
+    return WS.DOW.map((d, i) => `<div class="ws-cal-dow${i === 0 ? ' sun' : ''}" aria-hidden="true">${d}</div>`).join('');
   }
 
   function leadingSlots() {
@@ -59,8 +62,7 @@
 
   function renderSkeleton() {
     const [y, m] = month.split('-').map(Number);
-    let cells = '';
-    for (let d = 1; d <= WS.daysInMonth(y, m); d++) cells += '<div class="ws-skel ws-cal-skel" aria-hidden="true"></div>';
+    const cells = '<div class="ws-skel ws-cal-skel" aria-hidden="true"></div>'.repeat(WS.daysInMonth(y, m));
     cal.innerHTML = head() + leadingSlots() + cells;
   }
 
@@ -97,9 +99,8 @@
     } catch (e) {
       if (id !== reqId) return;
       cal.innerHTML = '';
-      errEl.innerHTML = WS.errorBanner('달력을 불러오지 못했어요.', '잠시 후 다시 시도해 주세요.', true);
+      WS.showError(errEl, '달력을 불러오지 못했어요.', '잠시 후 다시 시도해 주세요.', load);
       errEl.hidden = false;
-      errEl.querySelector('[data-retry]').addEventListener('click', load);
     } finally {
       if (id === reqId) cal.removeAttribute('aria-busy');
     }
@@ -107,7 +108,7 @@
 
   function go(n) {
     month = WS.shiftMonth(month, n);
-    history.pushState({ month }, '', `?month=${month}`);
+    WS.setParam('month', month, true);
     load();
   }
 
@@ -118,8 +119,7 @@
     if (btn) location.href = `date.html?date=${btn.dataset.date}`;
   });
   window.addEventListener('popstate', () => {
-    const m = WS.param('month');
-    month = m && /^\d{4}-(0[1-9]|1[0-2])$/.test(m) ? m : WS.monthOf(today);
+    month = resolveMonth(WS.param('month'));
     load();
   });
   // 페이지를 연 채로 자정을 넘기면 오늘/지난 날짜 표시를 다시 그린다
@@ -128,7 +128,7 @@
     load();
   });
 
-  history.replaceState({ month }, '', `?month=${month}`);
+  WS.setParam('month', month);
   load();
 })();
 </script>
