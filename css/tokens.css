@@ -1,0 +1,45 @@
+/* 기상송 — design tokens (tokens.json에서 생성). hex 값은 여기서만 쓴다. */
+:root {
+  /* Color */
+  --mint-50: #effcf8;
+  --mint-100: #d5f5ec;
+  --mint-200: #aeebd9;
+  --mint-500: #3ecfa9;
+  --mint-700: #0b7a62;
+  --mint-900: #063b30;
+  --white: #ffffff;
+  --surface-page: #f4faf8;
+  --ink: #13241f;
+  --ink-muted: #5b6f69;
+  --ink-disabled: #8fa29c;
+  --line: #dbe8e4;
+  --line-strong: #b9ccc6;
+  --danger: #b4372c;
+  --danger-bg: #fdf0ee;
+
+  /* Type */
+  --font-sans: "Pretendard", "Noto Sans KR", system-ui, -apple-system, sans-serif;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+
+  /* Radius */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  /* Shadow */
+  --shadow-card: 0 1px 2px rgba(19,36,31,0.04), 0 8px 24px rgba(19,36,31,0.06);
+  --shadow-focus: 0 0 0 3px rgba(62,207,169,0.35);
+}

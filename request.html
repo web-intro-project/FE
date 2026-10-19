@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>기상송 · 신청하기</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/bundle.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="ws-app">
+  <header class="ws-nav"><div class="ws-container ws-nav-inner">
+    <a class="ws-logo" href="index.html"><i class="ws-logo-mark" aria-hidden="true"></i><span>기상송</span></a>
+    <nav class="ws-menu" aria-label="주요 메뉴"><a href="index.html">오늘의 기상송</a><a href="request.html" aria-current="page">신청하기</a><a href="calendar.html">신청 현황</a></nav>
+  </div></header>
+
+  <main class="ws-container ws-page">
+    <div class="ws-page-head"><h1>기상송 신청하기</h1><p>한 날짜에 여러 곡을 신청할 수 있어요. 가장 먼저 접수된 곡이 그날의 대표곡으로 보여요.</p></div>
+
+    <div class="ws-grid-2">
+      <form class="ws-card ws-form" id="form" novalidate>
+        <div id="form-error" hidden></div>
+
+        <div class="ws-field" data-name="date">
+          <label class="ws-field-label" for="date"><span>신청 날짜<span class="ws-req" aria-hidden="true">*</span></span></label>
+          <input class="ws-input" id="date" name="date" type="date" required aria-describedby="date-help">
+          <div class="ws-field-help" id="date-help"><span data-msg></span><span>오늘 이후 날짜만 가능</span></div>
+        </div>
+
+        <div class="ws-field" data-name="songTitle">
+          <label class="ws-field-label" for="songTitle"><span>곡 제목<span class="ws-req" aria-hidden="true">*</span></span></label>
+          <input class="ws-input" id="songTitle" name="songTitle" type="text" maxlength="100" placeholder="예: 밤양갱" required autocomplete="off" aria-describedby="songTitle-help">
+          <div class="ws-field-help" id="songTitle-help"><span data-msg></span><span data-count>0/100</span></div>
+        </div>
+
+        <div class="ws-field" data-name="artist">
+          <label class="ws-field-label" for="artist"><span>가수<span class="ws-req" aria-hidden="true">*</span></span></label>
+          <input class="ws-input" id="artist" name="artist" type="text" maxlength="100" placeholder="예: 비비" required autocomplete="off" aria-describedby="artist-help">
+          <div class="ws-field-help" id="artist-help"><span data-msg></span><span data-count>0/100</span></div>
+        </div>
+
+        <div class="ws-field" data-name="applicantName">
+          <label class="ws-field-label" for="applicantName"><span>신청자 이름<span class="ws-req" aria-hidden="true">*</span></span></label>
+          <input class="ws-input" id="applicantName" name="applicantName" type="text" maxlength="20" placeholder="이름을 입력해 주세요" required autocomplete="name" aria-describedby="applicantName-help">
+          <div class="ws-field-help" id="applicantName-help"><span data-msg></span><span data-count>0/20</span></div>
+        </div>
+
+        <button class="ws-btn ws-btn-primary ws-btn-block" type="submit" id="submit">신청하기</button>
+      </form>
+
+      <aside class="ws-stack">
+        <section class="ws-card" aria-labelledby="side-h" aria-live="polite">
+          <h3 class="ws-card-title" id="side-h">신청 현황</h3>
+          <div id="side"></div>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/api.js"></script>
+<script>
+(function () {
+  const { api, esc } = WS;
+  const form = document.getElementById('form');
+  const submitBtn = document.getElementById('submit');
+  const formError = document.getElementById('form-error');
+  const sideTitle = document.getElementById('side-h');
+  const side = document.getElementById('side');
+  const dateInput = form.elements.date;
+  const today = WS.todayISO();
+  const FIELDS = ['date', 'songTitle', 'artist', 'applicantName'];
+  const NAMES = { songTitle: '곡 제목을', artist: '가수를', applicantName: '신청자 이름을' };
+
+  /* ---------- 초기값: ?date= → 없으면 내일 ---------- */
+  dateInput.min = today;
+  const qDate = WS.param('date');
+  dateInput.value = WS.isValidISO(qDate) && qDate >= today ? qDate : WS.addDays(today, 1);
+
+  /* ---------- 필드 오류 표시 ---------- */
+  function fieldEl(name) { return form.querySelector(`.ws-field[data-name="${name}"]`); }
+
+  function setError(name, message) {
+    const el = fieldEl(name);
+    const input = form.elements[name];
+    el.querySelector('[data-msg]').textContent = message || '';
+    if (message) { el.dataset.invalid = 'true'; input.setAttribute('aria-invalid', 'true'); }
+    else { delete el.dataset.invalid; input.removeAttribute('aria-invalid'); }
+  }
+
+  function validateField(name) {
+    const v = form.elements[name].value.trim();
+    if (name === 'date') {
+      if (!v || !WS.isValidISO(v)) return '신청 날짜를 선택해 주세요.';
+      if (v < today) return '지난 날짜는 신청할 수 없어요.';
+      return '';
+    }
+    if (!v) return `${NAMES[name]} 입력해 주세요.`;
+    if (v.length > WS.LIMITS[name]) return `${WS.LIMITS[name]}자 이내로 입력해 주세요.`;
+    return '';
+  }
+
+  /* ---------- 글자 수 카운터 ---------- */
+  ['songTitle', 'artist', 'applicantName'].forEach((name) => {
+    const input = form.elements[name];
+    const counter = fieldEl(name).querySelector('[data-count]');
+    input.addEventListener('input', () => {
+      counter.textContent = `${input.value.length}/${WS.LIMITS[name]}`;
+      if (fieldEl(name).dataset.invalid) setError(name, validateField(name));
+    });
+  });
+
+  /* ---------- 오른쪽: 선택한 날짜의 기존 신청 ---------- */
+  let sideReq = 0;
+  async function loadSide() {
+    const date = dateInput.value;
+    if (!WS.isValidISO(date)) {
+      sideTitle.textContent = '신청 현황';
+      side.innerHTML = '<p class="ws-caption">날짜를 고르면 이미 신청된 곡을 보여 드려요.</p>';
+      return;
+    }
+    const reqId = ++sideReq;
+    sideTitle.textContent = `${WS.formatDateShort(date)} 신청 현황`;
+    side.setAttribute('aria-busy', 'true');
+    side.innerHTML = WS.skelList(3);
+    try {
+      const data = await api.getRequests(date);
+      if (reqId !== sideReq) return; // 그 사이 날짜가 바뀜
+      const list = data.requests;
+      if (!list.length) {
+        side.innerHTML = '<p class="ws-card-sub">아직 신청곡이 없어요. 첫 번째로 신청해 보세요.</p>';
+      } else {
+        side.innerHTML = `<p class="ws-card-sub">이미 ${list.length}곡이 신청돼 있어요.</p>` + WS.requestList(list, { isToday: date === today });
+      }
+    } catch (e) {
+      if (reqId !== sideReq) return;
+      side.innerHTML = WS.errorBanner('신청 현황을 불러오지 못했어요.', '신청은 그대로 할 수 있어요.', true);
+      side.querySelector('[data-retry]').addEventListener('click', loadSide);
+    } finally {
+      if (reqId === sideReq) side.removeAttribute('aria-busy');
+    }
+  }
+
+  dateInput.addEventListener('change', () => {
+    setError('date', validateField('date'));
+    history.replaceState(null, '', `?date=${dateInput.value}`);
+    loadSide();
+  });
+
+  /* ---------- 제출 ---------- */
+  function showFormError(html) {
+    formError.innerHTML = html;
+    formError.hidden = !html;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (submitBtn.disabled) return;
+    showFormError('');
+
+    let firstInvalid = null;
+    FIELDS.forEach((name) => {
+      const msg = validateField(name);
+      setError(name, msg);
+      if (msg && !firstInvalid) firstInvalid = name;
+    });
+    if (firstInvalid) { form.elements[firstInvalid].focus(); return; }
+
+    const body = {};
+    FIELDS.forEach((name) => { body[name] = form.elements[name].value.trim(); });
+
+    WS.setBusy(submitBtn, true, '신청 중…');
+    try {
+      const created = await api.createRequest(body);
+      try { sessionStorage.setItem('wakesong.lastRequest', JSON.stringify(created)); } catch (_) {}
+      location.href = `complete.html?id=${encodeURIComponent(created.id)}`;
+    } catch (err) {
+      WS.setBusy(submitBtn, false);
+      if (err.status === 400 && err.field && FIELDS.includes(err.field)) {
+        setError(err.field, err.message);
+        form.elements[err.field].focus();
+      } else {
+        // 입력값은 지우지 않는다
+        showFormError(WS.errorBanner('신청을 저장하지 못했어요.', '입력한 내용은 그대로 있어요. 잠시 후 다시 시도해 주세요.', false));
+        formError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  });
+
+  loadSide();
+})();
+</script>
+</body>
+</html>

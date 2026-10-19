@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>기상송 · 날짜별 신청곡</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/bundle.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="ws-app">
+  <header class="ws-nav"><div class="ws-container ws-nav-inner">
+    <a class="ws-logo" href="index.html"><i class="ws-logo-mark" aria-hidden="true"></i><span>기상송</span></a>
+    <nav class="ws-menu" aria-label="주요 메뉴"><a href="index.html">오늘의 기상송</a><a href="request.html">신청하기</a><a href="calendar.html" aria-current="page">신청 현황</a></nav>
+  </div></header>
+
+  <main class="ws-container ws-page">
+    <a class="ws-btn ws-btn-ghost ws-btn-sm ws-back" id="back" href="calendar.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg> <span id="back-label">캘린더</span></a>
+
+    <div class="ws-page-head ws-page-head-row">
+      <div>
+        <span class="ws-badge" id="today-badge" hidden>오늘</span>
+        <h1 id="title"></h1>
+        <p id="count">신청 목록을 불러오고 있어요.</p>
+      </div>
+      <a class="ws-btn ws-btn-primary" id="apply" href="request.html" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> 이 날짜로 신청하기</a>
+      <p class="ws-caption" id="past-note" hidden>지난 날짜는 신청할 수 없어요</p>
+    </div>
+
+    <section class="ws-card" aria-labelledby="title">
+      <div id="list"></div>
+      <p class="ws-today-note ws-card-foot"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> 가장 먼저 접수된 곡을 대표곡으로 보여줘요. 실제 방송곡과 다를 수 있어요.</p>
+    </section>
+  </main>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/api.js"></script>
+<script>
+(function () {
+  const { api } = WS;
+  const today = WS.todayISO();
+  const qDate = WS.param('date');
+  const date = WS.isValidISO(qDate) ? qDate : today;
+  const isToday = date === today;
+  const isPast = date < today;
+  const listEl = document.getElementById('list');
+  const countEl = document.getElementById('count');
+  const applyHref = `request.html?date=${date}`;
+
+  document.title = `기상송 · ${WS.formatDateShort(date)} 신청곡`;
+  document.getElementById('title').textContent = WS.formatDate(date);
+  document.getElementById('today-badge').hidden = !isToday;
+  document.getElementById('back').href = `calendar.html?month=${WS.monthOf(date)}`;
+  document.getElementById('back-label').textContent = `${WS.parseISO(date).m}월 캘린더`;
+  const apply = document.getElementById('apply');
+  apply.href = applyHref;
+  apply.hidden = isPast;
+  document.getElementById('past-note').hidden = !isPast;
+
+  async function load() {
+    listEl.setAttribute('aria-busy', 'true');
+    listEl.innerHTML = WS.skelList(3);
+    try {
+      const { requests } = await api.getRequests(date);
+      countEl.textContent = `신청 ${requests.length}건 · 접수 순서대로 보여요.`;
+      if (!requests.length) {
+        listEl.innerHTML = isPast
+          ? WS.emptyState('신청곡이 없었어요', '이 날짜에는 신청된 곡이 없어요.')
+          : WS.emptyState('아직 신청곡이 없어요', '이 날짜의 첫 번째 신청자가 되어 보세요.', { href: applyHref, label: '이 날짜로 신청하기' });
+      } else {
+        listEl.innerHTML = WS.requestList(requests, { isToday });
+      }
+    } catch (e) {
+      countEl.textContent = '신청 목록을 불러오지 못했어요.';
+      listEl.innerHTML = WS.errorBanner('신청 목록을 불러오지 못했어요.', '잠시 후 다시 시도해 주세요.', true);
+      listEl.querySelector('[data-retry]').addEventListener('click', load);
+    } finally {
+      listEl.removeAttribute('aria-busy');
+    }
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,23 @@
+/* 기상송 — bundle.css에 없는 작은 보조 스타일. 값은 토큰만 쓴다. */
+[hidden] { display: none !important; }
+.ws-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+.ws-list-title-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.ws-list-body { min-width: 0; }
+.ws-list-link { color: inherit; text-decoration: none; }
+.ws-list-link:hover .ws-list-title { color: var(--mint-700); }
+
+.ws-caption { margin: 0; font-size: 14px; line-height: 20px; color: var(--ink-muted); }
+.ws-banner-actions { margin-top: var(--space-3); }
+.ws-banner .ws-btn { color: var(--danger); border-color: var(--danger); background: var(--white); }
+
+.ws-week-empty { margin: 0 0 var(--space-4); color: var(--ink-muted); font-size: 14px; line-height: 20px; }
+
+.ws-skel-list { display: flex; flex-direction: column; gap: var(--space-5); }
+.ws-skel-row { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: var(--space-4); align-items: center; }
+
+.ws-cal-skel { min-height: clamp(72px, 9vw, 132px); }
+@media (max-width: 720px) { .ws-cal-skel { min-height: 60px; } }
+
+.ws-empty-sm { padding: var(--space-8) var(--space-4); }
+.ws-empty-sm p { margin-bottom: var(--space-6); }
