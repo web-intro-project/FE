@@ -4,18 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>기상송 · 오늘의 기상송</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/bundle.css">
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/common.js"></script>
 </head>
 <body>
 <div class="ws-app">
-  <header class="ws-nav"><div class="ws-container ws-nav-inner">
-    <a class="ws-logo" href="index.html"><i class="ws-logo-mark" aria-hidden="true"></i><span>기상송</span></a>
-    <nav class="ws-menu" aria-label="주요 메뉴"><a href="index.html" aria-current="page">오늘의 기상송</a><a href="request.html">신청하기</a><a href="calendar.html">신청 현황</a></nav>
-  </div></header>
+  <ws-nav active="main"></ws-nav>
 
   <main class="ws-container ws-page">
     <div class="ws-page-head"><h1>좋은 아침이에요</h1><p>오늘 아침 기숙사에 울릴 기상송을 확인하고, 원하는 날의 곡을 신청해 보세요.</p></div>
@@ -39,23 +33,22 @@
   </main>
 </div>
 
-<script src="js/common.js"></script>
 <script src="js/api.js"></script>
 <script>
 (function () {
   const { api, esc, icon } = WS;
-  const today = WS.todayISO();
+  let today = WS.todayISO();
   const todayEl = document.getElementById('today');
   const weekEl = document.getElementById('week');
 
   /* ---------- TodayCard ---------- */
   function todaySkeleton() {
     todayEl.innerHTML = `<section class="ws-today" aria-busy="true" aria-label="오늘의 기상송 불러오는 중">
-      <div class="ws-skel" style="height:28px;width:130px;border-radius:999px"></div>
-      <div class="ws-skel" style="height:20px;width:200px;margin:28px 0 10px"></div>
-      <div class="ws-skel" style="height:48px;width:60%"></div>
-      <div class="ws-skel" style="height:28px;width:30%;margin:8px 0 clamp(32px,4vw,48px)"></div>
-      <div class="ws-skel" style="height:40px;width:100%"></div>
+      <div class="ws-skel ws-skel-badge"></div>
+      <div class="ws-skel ws-skel-today-date"></div>
+      <div class="ws-skel ws-skel-today-song"></div>
+      <div class="ws-skel ws-skel-today-artist"></div>
+      <div class="ws-skel ws-skel-today-meta"></div>
     </section>`;
   }
 
@@ -116,6 +109,13 @@
       weekEl.removeAttribute('aria-busy');
     }
   }
+
+  // 페이지를 연 채로 자정을 넘기면 새 날짜 기준으로 다시 불러온다
+  WS.onDayChange((now) => {
+    today = now;
+    loadToday();
+    loadWeek();
+  });
 
   loadToday();
   loadWeek();

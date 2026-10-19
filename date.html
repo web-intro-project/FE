@@ -4,18 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>기상송 · 날짜별 신청곡</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/bundle.css">
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/common.js"></script>
 </head>
 <body>
 <div class="ws-app">
-  <header class="ws-nav"><div class="ws-container ws-nav-inner">
-    <a class="ws-logo" href="index.html"><i class="ws-logo-mark" aria-hidden="true"></i><span>기상송</span></a>
-    <nav class="ws-menu" aria-label="주요 메뉴"><a href="index.html">오늘의 기상송</a><a href="request.html">신청하기</a><a href="calendar.html" aria-current="page">신청 현황</a></nav>
-  </div></header>
+  <ws-nav active="calendar"></ws-nav>
 
   <main class="ws-container ws-page">
     <a class="ws-btn ws-btn-ghost ws-btn-sm ws-back" id="back" href="calendar.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg> <span id="back-label">캘린더</span></a>
@@ -37,29 +31,33 @@
   </main>
 </div>
 
-<script src="js/common.js"></script>
 <script src="js/api.js"></script>
 <script>
 (function () {
   const { api } = WS;
-  const today = WS.todayISO();
   const qDate = WS.param('date');
-  const date = WS.isValidISO(qDate) ? qDate : today;
-  const isToday = date === today;
-  const isPast = date < today;
+  const date = WS.isValidISO(qDate) ? qDate : WS.todayISO();
+  // 오늘/지난 날짜 여부는 자정을 넘기면 바뀌므로 그때마다 다시 계산한다
+  let isToday, isPast;
   const listEl = document.getElementById('list');
   const countEl = document.getElementById('count');
   const applyHref = `request.html?date=${date}`;
 
   document.title = `기상송 · ${WS.formatDateShort(date)} 신청곡`;
   document.getElementById('title').textContent = WS.formatDate(date);
-  document.getElementById('today-badge').hidden = !isToday;
   document.getElementById('back').href = `calendar.html?month=${WS.monthOf(date)}`;
   document.getElementById('back-label').textContent = `${WS.parseISO(date).m}월 캘린더`;
   const apply = document.getElementById('apply');
   apply.href = applyHref;
-  apply.hidden = isPast;
-  document.getElementById('past-note').hidden = !isPast;
+
+  function applyDayState(today) {
+    isToday = date === today;
+    isPast = date < today;
+    document.getElementById('today-badge').hidden = !isToday;
+    apply.hidden = isPast;
+    document.getElementById('past-note').hidden = !isPast;
+  }
+  applyDayState(WS.todayISO());
 
   async function load() {
     listEl.setAttribute('aria-busy', 'true');
@@ -82,6 +80,11 @@
       listEl.removeAttribute('aria-busy');
     }
   }
+
+  WS.onDayChange((now) => {
+    applyDayState(now);
+    load();
+  });
 
   load();
 })();

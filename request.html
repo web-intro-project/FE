@@ -4,18 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>기상송 · 신청하기</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/bundle.css">
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/common.js"></script>
 </head>
 <body>
 <div class="ws-app">
-  <header class="ws-nav"><div class="ws-container ws-nav-inner">
-    <a class="ws-logo" href="index.html"><i class="ws-logo-mark" aria-hidden="true"></i><span>기상송</span></a>
-    <nav class="ws-menu" aria-label="주요 메뉴"><a href="index.html">오늘의 기상송</a><a href="request.html" aria-current="page">신청하기</a><a href="calendar.html">신청 현황</a></nav>
-  </div></header>
+  <ws-nav active="request"></ws-nav>
 
   <main class="ws-container ws-page">
     <div class="ws-page-head"><h1>기상송 신청하기</h1><p>한 날짜에 여러 곡을 신청할 수 있어요. 가장 먼저 접수된 곡이 그날의 대표곡으로 보여요.</p></div>
@@ -61,7 +55,6 @@
   </main>
 </div>
 
-<script src="js/common.js"></script>
 <script src="js/api.js"></script>
 <script>
 (function () {
@@ -72,7 +65,7 @@
   const sideTitle = document.getElementById('side-h');
   const side = document.getElementById('side');
   const dateInput = form.elements.date;
-  const today = WS.todayISO();
+  let today = WS.todayISO();
   const FIELDS = ['date', 'songTitle', 'artist', 'applicantName'];
   const NAMES = { songTitle: '곡 제목을', artist: '가수를', applicantName: '신청자 이름을' };
 
@@ -148,7 +141,8 @@
 
   dateInput.addEventListener('change', () => {
     setError('date', validateField('date'));
-    history.replaceState(null, '', `?date=${dateInput.value}`);
+    // 날짜를 비우면 쿼리도 지운다
+    history.replaceState(null, '', dateInput.value ? `?date=${encodeURIComponent(dateInput.value)}` : location.pathname);
     loadSide();
   });
 
@@ -160,6 +154,7 @@
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    refreshToday(); // 페이지를 오래 열어 둔 경우 제출 시점 날짜로 검사
     if (submitBtn.disabled) return;
     showFormError('');
 
@@ -191,6 +186,19 @@
       }
     }
   });
+
+  /* ---------- 자정을 넘기면 오늘 기준을 갱신 ---------- */
+  function refreshToday() {
+    const now = WS.todayISO();
+    if (now === today) return false;
+    today = now;
+    dateInput.min = today;
+    // 이미 고른 날짜가 지난 날짜가 됐으면 바로 알려준다
+    if (dateInput.value && dateInput.value < today) setError('date', validateField('date'));
+    return true;
+  }
+
+  WS.onDayChange(() => { if (refreshToday()) loadSide(); });
 
   loadSide();
 })();

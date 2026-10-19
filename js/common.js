@@ -1,4 +1,4 @@
-/* 기상송 — 공통 유틸과 컴포넌트 렌더 함수. 전역 WS 네임스페이스에 붙인다. */
+/* 기상송 — 공통 유틸과 컴포넌트 렌더 함수. 모든 페이지가 <head>에서 불러온다. 전역 WS 네임스페이스에 붙인다. */
 (function () {
   const WS = (window.WS = window.WS || {});
   const TZ = 'Asia/Seoul';
@@ -100,8 +100,8 @@
   function skelList(rows) {
     let html = '<div class="ws-skel-list">';
     for (let i = 0; i < rows; i++) {
-      html += '<div class="ws-skel-row"><div class="ws-skel" style="width:36px;height:36px;border-radius:50%"></div>' +
-        '<div><div class="ws-skel" style="height:20px;width:60%"></div><div class="ws-skel" style="height:16px;width:40%;margin-top:8px"></div></div></div>';
+      html += '<div class="ws-skel-row"><div class="ws-skel ws-skel-order"></div>' +
+        '<div><div class="ws-skel ws-skel-line-title"></div><div class="ws-skel ws-skel-line-sub"></div></div></div>';
     }
     return html + '</div>';
   }
@@ -133,7 +133,45 @@
     }
   }
 
+  /* ---------- 날짜가 바뀌면 알림 (페이지를 연 채로 자정을 넘길 때) ---------- */
+  // 탭으로 돌아올 때와 서울 기준 자정에 확인해서, 바뀌었으면 cb(새 날짜)를 부른다.
+  function onDayChange(cb) {
+    let current = todayISO();
+    function check() {
+      const now = todayISO();
+      if (now !== current) { current = now; cb(now); }
+    }
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) check(); });
+    const DAY = 24 * 60 * 60 * 1000;
+    const KST_OFFSET = 9 * 60 * 60 * 1000; // Asia/Seoul은 서머타임 없음
+    (function scheduleMidnight() {
+      const untilMidnight = DAY - ((Date.now() + KST_OFFSET) % DAY) + 1000;
+      setTimeout(() => { check(); scheduleMidnight(); }, untilMidnight);
+    })();
+  }
+
+  /* ---------- NavBar: <ws-nav active="main|request|calendar"> ---------- */
+  const NAV_ITEMS = [
+    ['main', 'index.html', '오늘의 기상송'],
+    ['request', 'request.html', '신청하기'],
+    ['calendar', 'calendar.html', '신청 현황'],
+  ];
+
+  class WsNav extends HTMLElement {
+    connectedCallback() {
+      if (this.firstElementChild) return;
+      const active = this.getAttribute('active');
+      const links = NAV_ITEMS.map(([key, href, label]) =>
+        `<a href="${href}"${key === active ? ' aria-current="page"' : ''}>${label}</a>`).join('');
+      this.innerHTML = '<header class="ws-nav"><div class="ws-container ws-nav-inner">' +
+        '<a class="ws-logo" href="index.html"><i class="ws-logo-mark" aria-hidden="true"></i><span>기상송</span></a>' +
+        `<nav class="ws-menu" aria-label="주요 메뉴">${links}</nav></div></header>`;
+    }
+  }
+  if (!customElements.get('ws-nav')) customElements.define('ws-nav', WsNav);
+
   Object.assign(WS, {
+    onDayChange,
     todayISO, isValidISO, addDays, dowOf, daysInMonth, monthOf, shiftMonth, parseISO,
     formatDate, formatDateFull, formatDateShort, formatMonth, formatTime,
     esc, param, icon, errorBanner, emptyState, skelList, requestList, setBusy,

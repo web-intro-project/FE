@@ -13,8 +13,22 @@
 
 .ws-week-empty { margin: 0 0 var(--space-4); color: var(--ink-muted); font-size: 14px; line-height: 20px; }
 
+/* <ws-nav>는 껍데기만: 안쪽 header가 sticky로 동작하도록 박스를 만들지 않는다 */
+ws-nav { display: contents; }
+
+/* ---------- Skeleton: 실제 콘텐츠와 같은 크기 ---------- */
 .ws-skel-list { display: flex; flex-direction: column; gap: var(--space-5); }
 .ws-skel-row { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: var(--space-4); align-items: center; }
+.ws-skel-order { width: 36px; height: 36px; border-radius: 50%; }
+.ws-skel-line-title { height: 20px; width: 60%; }
+.ws-skel-line-sub { height: 16px; width: 40%; margin-top: var(--space-2); }
+
+/* TodayCard 스켈레톤: .ws-today-* 요소와 같은 높이·간격 */
+.ws-skel-badge { height: 28px; width: 130px; border-radius: var(--radius-pill); }
+.ws-skel-today-date { height: 20px; width: 200px; margin: 28px 0 10px; }
+.ws-skel-today-song { height: 48px; width: 60%; }
+.ws-skel-today-artist { height: 28px; width: 30%; margin: var(--space-2) 0 clamp(32px, 4vw, 48px); }
+.ws-skel-today-meta { height: 40px; width: 100%; }
 
 .ws-cal-skel { min-height: clamp(72px, 9vw, 132px); }
 @media (max-width: 720px) { .ws-cal-skel { min-height: 60px; } }

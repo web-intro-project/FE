@@ -4,18 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>기상송 · 신청 현황</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="css/tokens.css">
-  <link rel="stylesheet" href="css/bundle.css">
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/common.js"></script>
 </head>
 <body>
 <div class="ws-app">
-  <header class="ws-nav"><div class="ws-container ws-nav-inner">
-    <a class="ws-logo" href="index.html"><i class="ws-logo-mark" aria-hidden="true"></i><span>기상송</span></a>
-    <nav class="ws-menu" aria-label="주요 메뉴"><a href="index.html">오늘의 기상송</a><a href="request.html">신청하기</a><a href="calendar.html" aria-current="page">신청 현황</a></nav>
-  </div></header>
+  <ws-nav active="calendar"></ws-nav>
 
   <main class="ws-container ws-page">
     <div class="ws-page-head ws-page-head-row">
@@ -32,18 +26,17 @@
         </div>
       </div>
       <div id="cal-error" hidden></div>
-      <div class="ws-cal" id="cal" role="grid"></div>
+      <div class="ws-cal" id="cal" role="group"></div>
       <div class="ws-cal-legend"><span><i style="background:var(--mint-500)"></i>신청 건수</span><span><i style="background:var(--mint-50);border:1px solid var(--mint-500)"></i>오늘</span><span><i style="background:var(--surface-page);border:1px solid var(--line)"></i>지난 날짜 (신청 불가)</span></div>
     </section>
   </main>
 </div>
 
-<script src="js/common.js"></script>
 <script src="js/api.js"></script>
 <script>
 (function () {
   const { api, esc } = WS;
-  const today = WS.todayISO();
+  let today = WS.todayISO();
   const cal = document.getElementById('cal');
   const label = document.getElementById('month-label');
   const errEl = document.getElementById('cal-error');
@@ -53,8 +46,10 @@
   let month = /^\d{4}-(0[1-9]|1[0-2])$/.test(qMonth || '') ? qMonth : WS.monthOf(today);
   let reqId = 0;
 
+  // 요일 머리글은 보이기만 한다. 날짜 버튼의 aria-label에 요일까지 넣어서
+  // 스크린 리더는 버튼 목록만 읽으면 된다 (grid/row 구조를 쓰지 않음).
   function head() {
-    return DOW.map((d, i) => `<div class="ws-cal-dow${i === 0 ? ' sun' : ''}" role="columnheader">${d}</div>`).join('');
+    return DOW.map((d, i) => `<div class="ws-cal-dow${i === 0 ? ' sun' : ''}" aria-hidden="true">${d}</div>`).join('');
   }
 
   function leadingSlots() {
@@ -65,21 +60,24 @@
   function renderSkeleton() {
     const [y, m] = month.split('-').map(Number);
     let cells = '';
-    for (let d = 1; d <= WS.daysInMonth(y, m); d++) cells += '<div class="ws-skel ws-cal-skel"></div>';
+    for (let d = 1; d <= WS.daysInMonth(y, m); d++) cells += '<div class="ws-skel ws-cal-skel" aria-hidden="true"></div>';
     cal.innerHTML = head() + leadingSlots() + cells;
   }
 
   function renderDays(days) {
     const cells = days.map((day) => {
-      const { m, d } = WS.parseISO(day.date);
+      const { d } = WS.parseISO(day.date);
+      const isPast = day.date < today;
+      const isToday = day.date === today;
       const cls = ['ws-cal-day'];
-      if (day.date < today) cls.push('is-past');
-      if (day.date === today) cls.push('is-today');
+      if (isPast) cls.push('is-past');
+      if (isToday) cls.push('is-today');
       const n = day.requestCount;
       const first = n > 0 && day.songs[0] ? `<span class="ws-cal-song"><b>${esc(day.songs[0].title)}</b></span>` : '';
       const more = n > 1 ? `<span class="ws-cal-song">외 ${n - 1}곡</span>` : '';
-      return `<button type="button" class="${cls.join(' ')}" role="gridcell" data-date="${day.date}"` +
-        ` aria-label="${m}월 ${d}일${day.date === today ? ' 오늘' : ''}, 신청 ${n}건"${day.date === today ? ' aria-current="date"' : ''}>` +
+      const note = isToday ? ' 오늘' : isPast ? ' 지난 날짜' : '';
+      return `<button type="button" class="${cls.join(' ')}" data-date="${day.date}"` +
+        ` aria-label="${WS.formatDate(day.date)}${note}, 신청 ${n}건"${isToday ? ' aria-current="date"' : ''}>` +
         `<span class="ws-cal-num"><span>${d}</span>${n > 0 ? `<span class="ws-cal-count">${n}</span>` : ''}</span>${first}${more}</button>`;
     }).join('');
     cal.innerHTML = head() + leadingSlots() + cells;
@@ -122,6 +120,11 @@
   window.addEventListener('popstate', () => {
     const m = WS.param('month');
     month = m && /^\d{4}-(0[1-9]|1[0-2])$/.test(m) ? m : WS.monthOf(today);
+    load();
+  });
+  // 페이지를 연 채로 자정을 넘기면 오늘/지난 날짜 표시를 다시 그린다
+  WS.onDayChange((now) => {
+    today = now;
     load();
   });
 
