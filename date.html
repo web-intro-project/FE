@@ -33,39 +33,53 @@
 
 <script src="js/api.js"></script>
 <script>
+/* =====================================================================
+ * S-05 날짜 상세 화면 (date.html?date=YYYY-MM-DD)
+ * ---------------------------------------------------------------------
+ * 하루에 신청된 곡 전체를 접수 순서대로 보여 준다.
+ *   - 오늘이면 "오늘" 배지 + 첫 곡에 "오늘의 대표곡" 배지
+ *   - 오늘이거나 미래면 "이 날짜로 신청하기" 버튼
+ *   - 지난 날짜면 버튼 대신 "지난 날짜는 신청할 수 없어요" 문구
+ * 달력이나 메인에서 날짜를 눌러 들어오는 화면이다.
+ * ===================================================================== */
 (function () {
   const api = WS.api;
+
+  // 보여 줄 날짜: 주소의 ?date= 가 올바르면 그 날짜, 아니면 오늘
   const qDate = WS.param('date');
   let date = WS.todayISO();
   if (WS.isValidISO(qDate)) date = qDate;
 
-  const listEl = document.getElementById('list');
-  const countEl = document.getElementById('count');
-  const apply = document.getElementById('apply');
-  const applyHref = 'request.html?date=' + date;
+  const listEl = document.getElementById('list');   // 신청 목록 자리
+  const countEl = document.getElementById('count'); // "신청 4건 · 접수 순서대로 보여요." 문구
+  const apply = document.getElementById('apply');   // "이 날짜로 신청하기" 버튼
+  const applyHref = 'request.html?date=' + date;    // 신청 화면으로 갈 때 날짜를 미리 채워 준다
 
-  document.title = '기상송 · ' + WS.formatDateShort(date) + ' 신청곡';
-  document.getElementById('title').textContent = WS.formatDate(date);
-  document.getElementById('back').href = 'calendar.html?month=' + WS.monthOf(date);
+  /* ---------- 날짜가 정해지면 바로 채울 수 있는 부분 (서버 응답과 상관없음) ---------- */
+  document.title = '기상송 · ' + WS.formatDateShort(date) + ' 신청곡';               // 브라우저 탭 제목
+  document.getElementById('title').textContent = WS.formatDate(date);                  // 큰 제목 "10월 21일 수요일"
+  document.getElementById('back').href = 'calendar.html?month=' + WS.monthOf(date);    // "← 10월 캘린더" 링크: 그 날짜가 있는 달로
   document.getElementById('back-label').textContent = WS.parseISO(date).m + '월 캘린더';
   apply.href = applyHref;
 
+  // 목록 불러오기. 자정을 넘기면 다시 불려서 오늘/지난 날짜 표시도 새로 계산된다.
   async function load() {
     // 오늘/지난 날짜 여부는 자정을 넘기면 바뀌므로 불러올 때마다 다시 계산한다
     const today = WS.todayISO();
     const isToday = (date === today);
     const isPast = (date < today);
-    document.getElementById('today-badge').hidden = !isToday;
-    apply.hidden = isPast;
-    document.getElementById('past-note').hidden = !isPast;
+    document.getElementById('today-badge').hidden = !isToday; // hidden = true 면 숨김
+    apply.hidden = isPast;                                     // 지난 날짜면 신청 버튼 숨김
+    document.getElementById('past-note').hidden = !isPast;     // 지난 날짜면 안내 문구 보임
 
     listEl.setAttribute('aria-busy', 'true');
-    listEl.innerHTML = WS.skelList(3);
+    listEl.innerHTML = WS.skelList(3); // 로딩 중 회색 줄 3개
     try {
       const data = await api.getRequests(date);
       const requests = data.requests;
       countEl.textContent = '신청 ' + requests.length + '건 · 접수 순서대로 보여요.';
 
+      // 세 가지 경우: 신청이 있음 / 없는데 지난 날짜 / 없는데 아직 신청 가능
       if (requests.length > 0) {
         listEl.innerHTML = WS.requestList(requests, isToday);
       } else if (isPast) {
@@ -81,8 +95,10 @@
     }
   }
 
+  // 페이지를 연 채로 자정을 넘기면 다시 불러온다
   WS.onDayChange(load);
 
+  // 시작
   load();
 })();
 </script>

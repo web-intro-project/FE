@@ -57,69 +57,116 @@
 
 <script src="js/api.js"></script>
 <script>
+/* =====================================================================
+ * S-02 신청 화면 (request.html)
+ * ---------------------------------------------------------------------
+ * 화면 구성
+ *   왼쪽 : 신청 폼 (날짜, 곡 제목, 가수, 신청자 이름) + "신청하기" 버튼
+ *   오른쪽: 고른 날짜에 이미 신청된 곡 목록 (중복 신청을 줄이도록 미리 보여 줌)
+ *
+ * 흐름
+ *   1) 주소의 ?date= 로 날짜 칸을 미리 채운다. (없거나 지난 날짜면 내일)
+ *   2) 사용자가 입력하는 동안 글자 수를 세고, 틀린 칸은 고치는 즉시 다시 검사한다.
+ *   3) "신청하기" → 모든 칸 검사 → 서버에 저장 → 완료 화면(complete.html)으로 이동
+ *   4) 저장이 실패해도 입력한 내용은 지우지 않는다.
+ * ===================================================================== */
 (function () {
   const api = WS.api;
-  const FIELDS = WS.FIELDS;
+  const FIELDS = WS.FIELDS;                                     // ['date', 'songTitle', 'artist', 'applicantName']
   const TEXT_FIELDS = ['songTitle', 'artist', 'applicantName']; // 글자 수 카운터가 있는 칸
-  const form = document.getElementById('form');
-  const submitBtn = document.getElementById('submit');
-  const formError = document.getElementById('form-error');
-  const sideTitle = document.getElementById('side-h');
-  const side = document.getElementById('side');
-  const dateInput = form.elements.date;
-  let today = WS.todayISO();
 
-  /* ---------- 초기값: ?date= → 없으면 내일 ---------- */
-  dateInput.min = today;
+  // HTML 요소 찾아 두기
+  const form = document.getElementById('form');             // 신청 폼 전체
+  const submitBtn = document.getElementById('submit');      // "신청하기" 버튼
+  const formError = document.getElementById('form-error');  // 폼 위쪽 오류 배너 자리
+  const sideTitle = document.getElementById('side-h');      // 오른쪽 카드 제목 ("10월 21일 신청 현황")
+  const side = document.getElementById('side');             // 오른쪽 카드 내용
+  const dateInput = form.elements.date;                     // 날짜 입력 칸 (form.elements.이름 = name 속성이 그 이름인 칸)
+  let today = WS.todayISO();                                // 오늘 날짜. 자정이 지나면 setToday() 로 바뀐다
+
+  /* =================================================================
+   * 1. 초기값: ?date= → 없으면 내일
+   * ================================================================= */
+  dateInput.min = today; // 달력 선택기에서 오늘 이전 날짜는 고를 수 없게
   const qDate = WS.param('date');
+  // 주소의 날짜가 올바르고 오늘 이후면 그대로, 아니면 내일 날짜로 채운다
   if (WS.isValidISO(qDate) && qDate >= today) dateInput.value = qDate;
   else dateInput.value = WS.addDays(today, 1);
 
-  /* ---------- 필드 오류 표시 ---------- */
+  /* =================================================================
+   * 2. 필드 오류 표시
+   * -----------------------------------------------------------------
+   * HTML 구조 (칸 하나):
+   *   <div class="ws-field">                ← field (data-invalid="true" 면 빨간 테두리)
+   *     <label>곡 제목</label>
+   *     <input name="songTitle">            ← input
+   *     <div class="ws-field-help">
+   *       <span data-msg></span>            ← 오류 문장 자리
+   *       <span data-count>0/100</span>     ← 글자 수 카운터 자리
+   *     </div>
+   *   </div>
+   * ================================================================= */
+
+  // name 칸에 오류 문장(message)을 띄운다. message 가 빈 값이면 오류 표시를 지운다.
   function setError(name, message) {
     const input = form.elements[name];
-    const field = input.closest('.ws-field');
+    const field = input.closest('.ws-field'); // closest = 위로 올라가며 가장 가까운 .ws-field 찾기
     field.querySelector('[data-msg]').textContent = message || '';
     if (message) {
-      field.setAttribute('data-invalid', 'true');
-      input.setAttribute('aria-invalid', 'true');
+      field.setAttribute('data-invalid', 'true');  // CSS가 빨간 테두리를 칠한다
+      input.setAttribute('aria-invalid', 'true');  // 화면 낭독기에 "잘못된 값" 알림
     } else {
       field.removeAttribute('data-invalid');
       input.removeAttribute('aria-invalid');
     }
   }
 
+  // name 칸에 지금 오류가 떠 있는지
   function hasError(name) {
     return form.elements[name].closest('.ws-field').hasAttribute('data-invalid');
   }
 
+  // name 칸의 현재 값을 검사해서 오류 문장(없으면 '')을 돌려준다.
   // 규칙은 목 서버와 같은 WS.validateField
   function validateField(name) {
     return WS.validateField(name, form.elements[name].value, today);
   }
 
-  /* ---------- 글자 수 카운터 ---------- */
+  /* =================================================================
+   * 3. 글자 수 카운터 ("3/100")
+   * ================================================================= */
   function updateCounter(name) {
     const input = form.elements[name];
     const counter = input.closest('.ws-field').querySelector('[data-count]');
     // 검사·전송과 같은 기준: 앞뒤 공백 제외
+    // (공백까지 세면 "5/20"이라고 보이는데 실제로는 3글자만 저장되는 혼란이 생긴다)
     counter.textContent = input.value.trim().length + '/' + WS.LIMITS[name];
-    // 오류가 떠 있는 칸은 고치는 즉시 다시 검사
+    // 오류가 떠 있는 칸은 고치는 즉시 다시 검사 (다 고치면 빨간 표시가 바로 사라진다)
     if (hasError(name)) setError(name, validateField(name));
   }
 
+  // 글자 칸 3개에 "글자를 칠 때마다(input 이벤트) 카운터 갱신"을 연결한다.
   for (let i = 0; i < TEXT_FIELDS.length; i++) {
-    const name = TEXT_FIELDS[i];
+    const name = TEXT_FIELDS[i]; // let/const 는 반복마다 새 변수라서, 아래 함수가 각자 자기 name 을 기억한다
     form.elements[name].addEventListener('input', function () {
       updateCounter(name);
     });
   }
 
-  /* ---------- 오른쪽: 선택한 날짜의 기존 신청 ---------- */
+  /* =================================================================
+   * 4. 오른쪽: 선택한 날짜의 기존 신청
+   * -----------------------------------------------------------------
+   * 날짜를 빠르게 여러 번 바꾸면 요청이 여러 개 동시에 나가고, 응답이 순서와 다르게
+   * 도착할 수 있다. (예: 21일 요청 → 22일 요청 → 22일 응답 → 21일 응답이 늦게 도착)
+   * 그러면 22일을 골랐는데 21일 목록이 보이는 문제가 생긴다.
+   * 그래서 요청마다 번호(sideReq)를 매기고, 가장 마지막 요청의 응답만 화면에 반영한다.
+   * ================================================================= */
   let sideReq = 0; // 마지막 요청 번호. 늦게 도착한 이전 응답은 버린다.
 
   async function loadSide() {
     const date = dateInput.value;
+
+    // 날짜 칸이 비었거나 이상하면 안내 문장만 보여 주고 끝
     if (!WS.isValidISO(date)) {
       sideTitle.textContent = '신청 현황';
       side.innerHTML = '<p class="ws-caption">날짜를 고르면 이미 신청된 곡을 보여 드려요.</p>';
@@ -127,97 +174,109 @@
     }
 
     sideReq++;
-    const reqId = sideReq;
+    const reqId = sideReq; // 이번 요청의 번호를 기억
     sideTitle.textContent = WS.formatDateShort(date) + ' 신청 현황';
     side.setAttribute('aria-busy', 'true');
     side.innerHTML = WS.skelList(3);
 
     try {
       const data = await api.getRequests(date);
-      if (reqId !== sideReq) return; // 그 사이 날짜가 바뀜
+      if (reqId !== sideReq) return; // 그 사이 날짜가 바뀜 → 이 응답은 버린다
       const list = data.requests;
       if (list.length === 0) {
         side.innerHTML = '<p class="ws-card-sub">아직 신청곡이 없어요. 첫 번째로 신청해 보세요.</p>';
       } else {
+        // 고른 날짜가 오늘이면 첫 곡에 "오늘의 대표곡" 배지
         side.innerHTML = '<p class="ws-card-sub">이미 ' + list.length + '곡이 신청돼 있어요.</p>' +
           WS.requestList(list, date === today);
       }
     } catch (e) {
       if (reqId !== sideReq) return;
+      // 오른쪽 목록을 못 불러와도 신청 자체는 할 수 있다고 알려 준다
       WS.showError(side, '신청 현황을 불러오지 못했어요.', '신청은 그대로 할 수 있어요.', loadSide);
     } finally {
       if (reqId === sideReq) side.removeAttribute('aria-busy');
     }
   }
 
+  // 날짜를 바꾸면: 날짜 검사 → 주소창 ?date= 갱신 → 오른쪽 목록 다시 불러오기
   dateInput.addEventListener('change', function () {
     setError('date', validateField('date'));
     WS.setParam('date', dateInput.value); // 날짜를 비우면 쿼리도 지운다
     loadSide();
   });
 
-  /* ---------- 제출 ---------- */
+  /* =================================================================
+   * 5. 제출 ("신청하기" 버튼 또는 Enter)
+   * ================================================================= */
   async function submit(e) {
-    e.preventDefault();
-    if (submitBtn.disabled) return; // 이미 보내는 중
-    setToday(WS.todayISO()); // 페이지를 오래 열어 둔 경우 제출 시점 날짜로 검사
-    formError.hidden = true;
+    e.preventDefault();                  // 브라우저 기본 동작(페이지 새로고침하며 전송)을 막는다
+    if (submitBtn.disabled) return;      // 이미 보내는 중
+    setToday(WS.todayISO());             // 페이지를 오래 열어 둔 경우 제출 시점 날짜로 검사
+    formError.hidden = true;             // 이전 오류 배너 숨기기
 
     // 모든 칸을 검사하고, 첫 번째로 틀린 칸에 커서를 둔다
+    // 동시에 서버로 보낼 데이터(body)도 만든다. 예: { date: '2026-10-21', songTitle: '밤편지', ... }
     const body = {};
     let firstInvalid = null;
     for (let i = 0; i < FIELDS.length; i++) {
       const name = FIELDS[i];
       body[name] = form.elements[name].value.trim();
       const msg = validateField(name);
-      setError(name, msg);
+      setError(name, msg); // 틀린 칸은 빨갛게, 맞는 칸은 표시 지우기
       if (msg && firstInvalid === null) firstInvalid = name;
     }
     if (firstInvalid !== null) {
-      form.elements[firstInvalid].focus();
+      form.elements[firstInvalid].focus(); // 사용자가 바로 고칠 수 있게 커서 이동
       return;
     }
 
+    // 검사 통과 → 버튼 잠그고 서버에 저장
     WS.setBusy(submitBtn, true, '신청 중…');
     try {
       const created = await api.createRequest(body);
+      // 완료 화면에서 신청 내용을 보여 주려고 잠깐 저장해 둔다.
+      // sessionStorage = 이 탭을 닫으면 사라지는 저장 공간
       try {
         sessionStorage.setItem('wakesong.lastRequest', JSON.stringify(created));
       } catch (err) {
         // 저장 못 해도 진행
       }
-      location.href = 'complete.html?id=' + encodeURIComponent(created.id);
+      location.href = 'complete.html?id=' + encodeURIComponent(created.id); // 완료 화면으로 이동
     } catch (err) {
-      WS.setBusy(submitBtn, false);
+      WS.setBusy(submitBtn, false); // 버튼 다시 누를 수 있게
       if (err.status === 400 && err.field && FIELDS.indexOf(err.field) !== -1) {
-        // 서버가 특정 칸을 지적하면 그 칸에 표시
+        // 서버가 특정 칸을 지적하면 그 칸에 표시 (indexOf 가 -1 이 아니면 FIELDS 안에 있는 이름)
         setError(err.field, err.message);
         form.elements[err.field].focus();
       } else {
-        // 입력값은 지우지 않는다
+        // 그 밖의 실패(인터넷 끊김, 서버 오류)는 폼 위에 배너로. 입력값은 지우지 않는다
         WS.showError(formError, '신청을 저장하지 못했어요.', '입력한 내용은 그대로 있어요. 잠시 후 다시 시도해 주세요.');
         formError.hidden = false;
-        formError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        formError.scrollIntoView({ behavior: 'smooth', block: 'center' }); // 배너가 보이게 부드럽게 스크롤
       }
     }
   }
 
   form.addEventListener('submit', submit);
 
-  /* ---------- 자정을 넘기면 오늘 기준을 갱신 ---------- */
+  /* =================================================================
+   * 6. 자정을 넘기면 오늘 기준을 갱신
+   * ================================================================= */
   function setToday(now) {
-    if (now === today) return;
+    if (now === today) return; // 날짜가 그대로면 할 일 없음
     today = now;
-    dateInput.min = today;
+    dateInput.min = today;     // 달력 선택기의 최소 날짜도 새 오늘로
     // 이미 고른 날짜가 지난 날짜가 됐으면 바로 알려준다
     if (dateInput.value && dateInput.value < today) setError('date', validateField('date'));
   }
 
   WS.onDayChange(function (now) {
     setToday(now);
-    loadSide();
+    loadSide(); // "오늘의 대표곡" 배지 표시가 달라질 수 있으므로 다시 불러온다
   });
 
+  // 시작: 처음 채워진 날짜의 신청 목록을 오른쪽에 불러온다
   loadSide();
 })();
 </script>

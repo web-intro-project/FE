@@ -34,23 +34,39 @@
 
 <script src="js/api.js"></script>
 <script>
+/* =====================================================================
+ * S-04 캘린더 화면 (calendar.html)
+ * ---------------------------------------------------------------------
+ * 한 달 달력에 날짜마다 신청 건수와 대표곡 제목을 보여 준다.
+ *   - ◀ ▶ 버튼으로 이전/다음 달 이동 (주소창 ?month= 도 같이 바뀌어 새로고침해도 그 달이 나온다)
+ *   - 날짜를 누르면 그날 상세 화면(date.html)으로 이동
+ *   - 오늘은 강조, 지난 날짜는 흐리게 표시
+ *
+ * 달력 칸 배치 (7칸 = 한 주, CSS grid 가 7개씩 줄을 바꿔 준다)
+ *   [일][월][화][수][목][금][토]   ← 요일 머리글 7칸
+ *   [  ][  ][  ][  ][ 1][ 2][ 3]   ← 1일 앞 빈칸(leadingSlots) + 날짜 버튼
+ *   [ 4][ 5] ...
+ * ===================================================================== */
 (function () {
   const api = WS.api;
   const esc = WS.esc;
-  let today = WS.todayISO();
-  const cal = document.getElementById('cal');
-  const label = document.getElementById('month-label');
-  const errEl = document.getElementById('cal-error');
+  let today = WS.todayISO();                         // 오늘 날짜 (자정이 지나면 바뀜)
+  const cal = document.getElementById('cal');        // 달력 칸들이 들어갈 자리
+  const label = document.getElementById('month-label'); // "2026년 10월" 글자
+  const errEl = document.getElementById('cal-error');   // 오류 배너 자리
 
   // ?month= 이 YYYY-MM 형식이면 그 달, 아니면 이번 달
+  // 예: ?month=2026-11 → '2026-11', ?month=abc → 이번 달
   function resolveMonth(m) {
     if (WS.isValidMonth(m)) return m;
     return WS.monthOf(today);
   }
 
-  let month = resolveMonth(WS.param('month'));
+  let month = resolveMonth(WS.param('month')); // 지금 보고 있는 달 ("YYYY-MM")
   let reqId = 0; // 마지막 요청 번호. 늦게 도착한 이전 응답은 버린다.
+                 // (◀ 를 빠르게 여러 번 누르면 응답이 뒤죽박죽 도착할 수 있어서)
 
+  // 요일 머리글 7칸 HTML. 일요일(0번)만 빨간색(sun 클래스)
   // 요일 머리글은 보이기만 한다. 날짜 버튼의 aria-label에 요일까지 넣어서
   // 스크린 리더는 버튼 목록만 읽으면 된다 (grid/row 구조를 쓰지 않음).
   function head() {
@@ -63,47 +79,61 @@
   }
 
   // 1일 앞의 빈칸 (1일이 수요일이면 일·월·화 3칸)
+  // dowOf 가 요일 번호(일=0, 월=1, 화=2, 수=3 …)를 주므로 그 수만큼 빈칸을 만든다.
   function leadingSlots() {
     const n = WS.dowOf(month + '-01');
     return WS.repeatStr('<div class="ws-cal-day is-empty-slot" aria-hidden="true"></div>', n);
   }
 
+  // 지금 보고 있는 달의 마지막 날 (28~31)
   function lastDayOfMonth() {
     const y = Number(month.slice(0, 4));
     const m = Number(month.slice(5, 7));
     return WS.daysInMonth(y, m);
   }
 
+  // 불러오는 동안: 날짜 칸 자리에 회색 상자(스켈레톤)를 그 달 일수만큼 깐다
   function renderSkeleton() {
     const cells = WS.repeatStr('<div class="ws-skel ws-cal-skel" aria-hidden="true"></div>', lastDayOfMonth());
     cal.innerHTML = head() + leadingSlots() + cells;
   }
 
+  // 날짜 하나의 버튼 HTML을 만든다.
+  // day 모양: { date: '2026-10-21', requestCount: 4, songs: [{ title, artist }, ...] }
+  // 버튼 안 모양:
+  //   21        (4)    ← 날짜 숫자 + 신청 건수 동그라미
+  //   한 페이지가…      ← 대표곡(첫 번째 신청곡) 제목
+  //   외 3곡
   function dayButton(day) {
     const n = day.requestCount;
-    const isPast = day.date < today;
-    const isToday = day.date === today;
+    const isPast = day.date < today;   // 지난 날짜
+    const isToday = day.date === today; // 오늘
 
+    // CSS 클래스와 화면 낭독기용 설명 붙이기
     let cls = 'ws-cal-day';
     let note = '';
     if (isPast) {
-      cls += ' is-past';
+      cls += ' is-past';   // 흐리게
       note = ' 지난 날짜';
     }
     if (isToday) {
-      cls += ' is-today';
+      cls += ' is-today';  // 강조
       note = ' 오늘';
     }
 
+    // data-date : 클릭했을 때 어느 날짜인지 알아내려고 붙여 두는 값
+    // aria-label: 화면 낭독기가 읽을 문장 (예: "10월 21일 수요일, 신청 4건")
     let html = '<button type="button" class="' + cls + '" data-date="' + day.date + '"' +
       ' aria-label="' + WS.formatDate(day.date) + note + ', 신청 ' + n + '건"';
     if (isToday) html += ' aria-current="date"';
     html += '>';
 
+    // 날짜 숫자 + (신청이 있으면) 건수
     html += '<span class="ws-cal-num"><span>' + WS.parseISO(day.date).d + '</span>';
     if (n > 0) html += '<span class="ws-cal-count">' + n + '</span>';
     html += '</span>';
 
+    // 대표곡 제목과 "외 N곡"
     if (n > 0 && day.songs[0]) html += '<span class="ws-cal-song"><b>' + esc(day.songs[0].title) + '</b></span>';
     if (n > 1) html += '<span class="ws-cal-song">외 ' + (n - 1) + '곡</span>';
 
@@ -111,17 +141,19 @@
     return html;
   }
 
+  // 서버에서 받은 한 달 치 날짜 목록으로 달력 전체를 그린다
   function renderDays(days) {
     let cells = '';
     for (let i = 0; i < days.length; i++) cells += dayButton(days[i]);
     cal.innerHTML = head() + leadingSlots() + cells;
   }
 
+  // 지금 month 의 달력을 불러온다: 제목 갱신 → 스켈레톤 → 서버 요청 → 그리기 (실패 시 오류 배너)
   async function load() {
     reqId++;
-    const id = reqId;
+    const id = reqId; // 이번 요청 번호
 
-    label.textContent = WS.formatMonth(month);
+    label.textContent = WS.formatMonth(month);          // "2026년 10월"
     cal.setAttribute('aria-label', WS.formatMonth(month));
     cal.setAttribute('aria-busy', 'true');
     errEl.hidden = true;
@@ -141,11 +173,14 @@
     }
   }
 
+  // n달 이동 (-1 = 이전 달, 1 = 다음 달). 방문 기록을 남겨서 브라우저 "뒤로 가기"로 돌아올 수 있다.
   function go(n) {
     month = WS.shiftMonth(month, n);
     WS.setParam('month', month, true);
     load();
   }
+
+  /* ---------- 버튼·이벤트 연결 ---------- */
 
   document.getElementById('prev').addEventListener('click', function () {
     go(-1);
@@ -155,12 +190,14 @@
   });
 
   // 날짜 버튼을 누르면 그날 상세 화면으로
+  // 버튼 31개에 각각 연결하는 대신 달력 전체(cal)에 한 번만 연결하고,
+  // 실제로 눌린 요소(e.target)에서 가장 가까운 날짜 버튼을 찾는다. ("이벤트 위임" 방식)
   cal.addEventListener('click', function (e) {
     const btn = e.target.closest('button[data-date]');
     if (btn) location.href = 'date.html?date=' + btn.dataset.date;
   });
 
-  // 뒤로/앞으로 가기
+  // 뒤로/앞으로 가기: 바뀐 주소의 ?month= 를 읽어 그 달을 다시 그린다
   window.addEventListener('popstate', function () {
     month = resolveMonth(WS.param('month'));
     load();
@@ -172,6 +209,7 @@
     load();
   });
 
+  // 시작: 주소창에 지금 달을 적어 두고(잘못된 ?month= 는 고쳐짐) 달력을 불러온다
   WS.setParam('month', month);
   load();
 })();
