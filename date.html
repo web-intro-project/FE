@@ -37,8 +37,6 @@
   const { api } = WS;
   const qDate = WS.param('date');
   const date = WS.isValidISO(qDate) ? qDate : WS.todayISO();
-  // 오늘/지난 날짜 여부는 자정을 넘기면 바뀌므로 그때마다 다시 계산한다
-  let isToday, isPast;
   const listEl = document.getElementById('list');
   const countEl = document.getElementById('count');
   const applyHref = `request.html?date=${date}`;
@@ -50,16 +48,15 @@
   const apply = document.getElementById('apply');
   apply.href = applyHref;
 
-  function applyDayState(today) {
-    isToday = date === today;
-    isPast = date < today;
+  async function load() {
+    // 오늘/지난 날짜 여부는 자정을 넘기면 바뀌므로 불러올 때마다 다시 계산한다
+    const today = WS.todayISO();
+    const isToday = date === today;
+    const isPast = date < today;
     document.getElementById('today-badge').hidden = !isToday;
     apply.hidden = isPast;
     document.getElementById('past-note').hidden = !isPast;
-  }
-  applyDayState(WS.todayISO());
 
-  async function load() {
     listEl.setAttribute('aria-busy', 'true');
     listEl.innerHTML = WS.skelList(3);
     try {
@@ -80,10 +77,7 @@
     }
   }
 
-  WS.onDayChange((now) => {
-    applyDayState(now);
-    load();
-  });
+  WS.onDayChange(load);
 
   load();
 })();
