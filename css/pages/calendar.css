@@ -1,0 +1,207 @@
+/* =====================================================================
+ * S-04 캘린더 화면 (calendar.html)
+ * ---------------------------------------------------------------------
+ * 월 이동 버튼, 7칸짜리 달력, 범례.
+ * css/common.css 다음에 불러온다.
+ * ===================================================================== */
+
+/* ---------- 달력 위쪽: "2026년 10월" + ◀ ▶ 버튼 ---------- */
+.ws-cal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.ws-cal-month {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+}
+
+.ws-cal-nav {
+  display: flex;
+  gap: 12px;
+}
+
+.ws-icon-btn {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--line);
+  background: var(--white);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.ws-icon-btn:hover {
+  background: var(--mint-50);
+  border-color: var(--mint-200);
+}
+
+.ws-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
+/* ---------- 달력 칸 ---------- */
+/* 요일 머리글 7칸 + 날짜 버튼. grid 로 7개씩 줄을 바꾼다 */
+.ws-cal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: clamp(6px, 0.9vw, 12px);
+}
+
+.ws-cal-dow {
+  text-align: center;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  padding-bottom: 8px;
+}
+
+.ws-cal-dow.sun {
+  color: var(--danger);
+}
+
+.ws-cal-day {
+  min-height: clamp(72px, 9vw, 132px);
+  padding: clamp(8px, 1vw, 14px);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  border: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.ws-cal-day:hover {
+  border-color: var(--mint-200);
+  background: var(--mint-50);
+}
+
+.ws-cal-day:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-color: var(--mint-700);
+}
+
+.ws-cal-num {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 700;
+}
+
+.ws-cal-count {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: var(--radius-pill);
+  background: var(--mint-500);
+  color: var(--mint-900);
+  font-size: 12px;
+  line-height: 22px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.ws-cal-song {
+  font-size: 13px;
+  line-height: 18px;
+  color: var(--ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ws-cal-song b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* 날짜 상태: 1일 앞 빈칸 / 지난 날짜 / 오늘 */
+.ws-cal-day.is-empty-slot {
+  background: transparent;
+  border-color: transparent;
+  cursor: default;
+}
+
+.ws-cal-day.is-past {
+  background: var(--surface-page);
+}
+
+.ws-cal-day.is-past .ws-cal-num {
+  color: var(--ink-disabled);
+}
+
+.ws-cal-day.is-today {
+  border-color: var(--mint-500);
+  background: var(--mint-50);
+}
+
+.ws-cal-day.is-today .ws-cal-num > span:first-child {
+  color: var(--mint-700);
+}
+
+/* ---------- 범례 (신청 건수 / 오늘 / 지난 날짜) ---------- */
+.ws-cal-legend {
+  display: flex;
+  gap: 12px 24px;
+  margin-top: 24px;
+  font-size: 14px;
+  color: var(--ink-muted);
+  flex-wrap: wrap;
+}
+
+.ws-cal-legend i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  margin-right: 8px;
+  vertical-align: -1px;
+}
+
+/* ---------- 좁은 화면 (휴대폰) ---------- */
+@media (max-width: 720px) {
+  .ws-cal {
+    gap: 4px;
+  }
+
+  .ws-cal-day {
+    min-height: 60px;
+    padding: 8px 4px;
+    align-items: center;
+  }
+
+  .ws-cal-num {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .ws-cal-song {
+    display: none;
+  }
+}
+
+/* ---------- 달력 스켈레톤 ---------- */
+.ws-cal-skel {
+  min-height: clamp(72px, 9vw, 132px);
+}
+
+@media (max-width: 720px) {
+  .ws-cal-skel {
+    min-height: 60px;
+  }
+}

@@ -1,0 +1,90 @@
+/* =====================================================================
+ * S-02 신청 화면 (request.html)
+ * ---------------------------------------------------------------------
+ * 신청 폼과 입력 칸(TextField).
+ * css/common.css 다음에 불러온다.
+ * ===================================================================== */
+
+/* ---------- 신청 폼 ---------- */
+.ws-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-field-gap);
+}
+
+/* ---------- 입력 칸 (TextField) ---------- */
+/* data-invalid="true" 가 붙으면 빨간 테두리와 오류 글씨 */
+.ws-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ws-field-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.ws-field-label .ws-req {
+  color: var(--mint-700);
+  margin-left: 3px;
+}
+
+.ws-input {
+  height: 52px;
+  width: 100%;
+  padding: 0 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  font: 400 16px/26px var(--font-sans);
+  color: var(--ink);
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+
+.ws-input::placeholder {
+  color: var(--ink-disabled);
+}
+
+.ws-input:hover {
+  border-color: var(--mint-700);
+}
+
+.ws-input:focus {
+  outline: none;
+  border-color: var(--mint-700);
+  box-shadow: var(--shadow-focus);
+}
+
+.ws-input:disabled {
+  background: var(--surface-page);
+  color: var(--ink-disabled);
+}
+
+.ws-field-help {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 20px;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink-muted);
+}
+
+.ws-field[data-invalid="true"] .ws-input {
+  border-color: var(--danger);
+}
+
+.ws-field[data-invalid="true"] .ws-input:focus {
+  box-shadow: 0 0 0 3px rgba(180, 55, 44, 0.18);
+}
+
+.ws-field[data-invalid="true"] .ws-field-help {
+  color: var(--danger);
+}

@@ -22,10 +22,19 @@ python3 -m http.server 8000   # → http://localhost:8000
 
 ## 구조
 
-- `css/style.css` — 페이지가 불러오는 유일한 CSS. 폰트와 아래 세 파일을 `@import`
-  - `css/tokens.css` — 디자인 토큰 (tokens.json에서 생성)
-  - `css/bundle.css` — 디자인 시스템 컴포넌트 스타일. 원본에서 줄바꿈·들여쓰기만 정리했고 규칙은 수정 금지
-  - `css/app.css` — 보조 스타일 (스켈레톤 등)
+- CSS — 모든 페이지가 `css/common.css`를 먼저, 그다음 자기 페이지 파일을 불러온다
+  ```html
+  <link rel="stylesheet" href="css/common.css">
+  <link rel="stylesheet" href="css/pages/index.css">
+  ```
+  - `css/tokens.css` — 디자인 토큰 (색·간격·모서리 등 변수, tokens.json에서 생성). `common.css`가 `@import`
+  - `css/common.css` — 여러 페이지가 같이 쓰는 것: 기본·레이아웃, 상단 메뉴, 버튼, 카드, 배지, 오류 배너·빈 화면·스켈레톤, 신청 목록
+  - `css/pages/index.css` — 메인: 오늘의 기상송 카드, 이번 주 목록
+  - `css/pages/request.css` — 신청: 폼, 입력 칸
+  - `css/pages/complete.css` — 완료: 체크 아이콘, 요약 표
+  - `css/pages/calendar.css` — 캘린더: 달력 칸, 월 이동 버튼, 범례
+  - `css/pages/date.css` — 날짜 상세: 뒤로 가기 링크
+  - 한 페이지에서만 쓰는 스타일은 그 페이지 파일에, 두 페이지 이상 쓰면 `common.css`에 둔다
 - `js/common.js` — `<head>`에서 불러온다. 날짜(Asia/Seoul)·이스케이프·공통 렌더 함수, 상단 메뉴 `<ws-nav active="main|request|calendar">`, 자정 넘김 감지 `WS.onDayChange`
 - `js/api.js` — API 클라이언트. 응답 형식은 파일 상단 주석 참고
 
