@@ -25,32 +25,52 @@
 <script src="js/api.js"></script>
 <script>
 (function () {
-  const { esc } = WS;
+  const esc = WS.esc;
+
   let req = null;
-  try { req = JSON.parse(sessionStorage.getItem('wakesong.lastRequest') || 'null'); } catch (_) {}
+  try {
+    req = JSON.parse(sessionStorage.getItem('wakesong.lastRequest') || 'null');
+  } catch (e) {
+    req = null;
+  }
 
   // 신청 직후가 아니면(상태 없음) 메인으로
-  if (!req || String(req.id) !== WS.param('id')) { location.replace('index.html'); return; }
+  if (!req || String(req.id) !== WS.param('id')) {
+    location.replace('index.html');
+    return;
+  }
 
   const short = WS.formatDateShort(req.date);
   document.getElementById('summary').innerHTML =
-    `<dt>날짜</dt><dd>${esc(WS.formatDateFull(req.date))}</dd>` +
-    `<dt>곡 제목</dt><dd>${esc(req.songTitle)}</dd>` +
-    `<dt>가수</dt><dd>${esc(req.artist)}</dd>` +
-    `<dt>신청자</dt><dd>${esc(req.applicantName)}</dd>`;
+    '<dt>날짜</dt><dd>' + esc(WS.formatDateFull(req.date)) + '</dd>' +
+    '<dt>곡 제목</dt><dd>' + esc(req.songTitle) + '</dd>' +
+    '<dt>가수</dt><dd>' + esc(req.artist) + '</dd>' +
+    '<dt>신청자</dt><dd>' + esc(req.applicantName) + '</dd>';
+
   const toDate = document.getElementById('to-date');
-  toDate.href = `date.html?date=${req.date}`;
-  toDate.textContent = `${short} 신청 현황 보기`;
+  toDate.href = 'date.html?date=' + req.date;
+  toDate.textContent = short + ' 신청 현황 보기';
 
   const text = document.getElementById('done-text');
-  text.textContent = `${short} 신청 목록에 추가됐어요.`;
+  text.textContent = short + ' 신청 목록에 추가됐어요.';
   document.getElementById('done').hidden = false;
 
   // 몇 번째 신청인지는 목록에서 계산 (실패하면 문장만 생략)
-  WS.api.getRequests(req.date).then((data) => {
-    const idx = data.requests.findIndex((r) => String(r.id) === String(req.id));
-    if (idx >= 0) text.textContent = `${short} 신청 목록에 추가됐어요. 이 날짜의 ${idx + 1}번째 신청이에요.`;
-  }).catch(() => {});
+  async function showOrder() {
+    try {
+      const data = await WS.api.getRequests(req.date);
+      for (let i = 0; i < data.requests.length; i++) {
+        if (String(data.requests[i].id) === String(req.id)) {
+          text.textContent = short + ' 신청 목록에 추가됐어요. 이 날짜의 ' + (i + 1) + '번째 신청이에요.';
+          break;
+        }
+      }
+    } catch (e) {
+      // 무시
+    }
+  }
+
+  showOrder();
 })();
 </script>
 </body>

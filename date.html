@@ -34,25 +34,27 @@
 <script src="js/api.js"></script>
 <script>
 (function () {
-  const { api } = WS;
+  const api = WS.api;
   const qDate = WS.param('date');
-  const date = WS.isValidISO(qDate) ? qDate : WS.todayISO();
+  let date = WS.todayISO();
+  if (WS.isValidISO(qDate)) date = qDate;
+
   const listEl = document.getElementById('list');
   const countEl = document.getElementById('count');
-  const applyHref = `request.html?date=${date}`;
-
-  document.title = `기상송 · ${WS.formatDateShort(date)} 신청곡`;
-  document.getElementById('title').textContent = WS.formatDate(date);
-  document.getElementById('back').href = `calendar.html?month=${WS.monthOf(date)}`;
-  document.getElementById('back-label').textContent = `${WS.parseISO(date).m}월 캘린더`;
   const apply = document.getElementById('apply');
+  const applyHref = 'request.html?date=' + date;
+
+  document.title = '기상송 · ' + WS.formatDateShort(date) + ' 신청곡';
+  document.getElementById('title').textContent = WS.formatDate(date);
+  document.getElementById('back').href = 'calendar.html?month=' + WS.monthOf(date);
+  document.getElementById('back-label').textContent = WS.parseISO(date).m + '월 캘린더';
   apply.href = applyHref;
 
   async function load() {
     // 오늘/지난 날짜 여부는 자정을 넘기면 바뀌므로 불러올 때마다 다시 계산한다
     const today = WS.todayISO();
-    const isToday = date === today;
-    const isPast = date < today;
+    const isToday = (date === today);
+    const isPast = (date < today);
     document.getElementById('today-badge').hidden = !isToday;
     apply.hidden = isPast;
     document.getElementById('past-note').hidden = !isPast;
@@ -60,14 +62,16 @@
     listEl.setAttribute('aria-busy', 'true');
     listEl.innerHTML = WS.skelList(3);
     try {
-      const { requests } = await api.getRequests(date);
-      countEl.textContent = `신청 ${requests.length}건 · 접수 순서대로 보여요.`;
-      if (!requests.length) {
-        listEl.innerHTML = isPast
-          ? WS.emptyState('신청곡이 없었어요', '이 날짜에는 신청된 곡이 없어요.')
-          : WS.emptyState('아직 신청곡이 없어요', '이 날짜의 첫 번째 신청자가 되어 보세요.', { href: applyHref, label: '이 날짜로 신청하기' });
+      const data = await api.getRequests(date);
+      const requests = data.requests;
+      countEl.textContent = '신청 ' + requests.length + '건 · 접수 순서대로 보여요.';
+
+      if (requests.length > 0) {
+        listEl.innerHTML = WS.requestList(requests, isToday);
+      } else if (isPast) {
+        listEl.innerHTML = WS.emptyState('신청곡이 없었어요', '이 날짜에는 신청된 곡이 없어요.');
       } else {
-        listEl.innerHTML = WS.requestList(requests, { isToday });
+        listEl.innerHTML = WS.emptyState('아직 신청곡이 없어요', '이 날짜의 첫 번째 신청자가 되어 보세요.', { href: applyHref, label: '이 날짜로 신청하기' });
       }
     } catch (e) {
       countEl.textContent = '신청 목록을 불러오지 못했어요.';

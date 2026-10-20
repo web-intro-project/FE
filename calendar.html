@@ -35,7 +35,8 @@
 <script src="js/api.js"></script>
 <script>
 (function () {
-  const { api, esc } = WS;
+  const api = WS.api;
+  const esc = WS.esc;
   let today = WS.todayISO();
   const cal = document.getElementById('cal');
   const label = document.getElementById('month-label');
@@ -43,58 +44,92 @@
 
   // ?month= 이 YYYY-MM 형식이면 그 달, 아니면 이번 달
   function resolveMonth(m) {
-    return /^\d{4}-(0[1-9]|1[0-2])$/.test(m || '') ? m : WS.monthOf(today);
+    if (WS.isValidMonth(m)) return m;
+    return WS.monthOf(today);
   }
 
   let month = resolveMonth(WS.param('month'));
-  let reqId = 0;
+  let reqId = 0; // 마지막 요청 번호. 늦게 도착한 이전 응답은 버린다.
 
   // 요일 머리글은 보이기만 한다. 날짜 버튼의 aria-label에 요일까지 넣어서
   // 스크린 리더는 버튼 목록만 읽으면 된다 (grid/row 구조를 쓰지 않음).
   function head() {
-    return WS.DOW.map((d, i) => `<div class="ws-cal-dow${i === 0 ? ' sun' : ''}" aria-hidden="true">${d}</div>`).join('');
+    let html = '';
+    for (let i = 0; i < WS.DOW.length; i++) {
+      if (i === 0) html += '<div class="ws-cal-dow sun" aria-hidden="true">' + WS.DOW[i] + '</div>';
+      else html += '<div class="ws-cal-dow" aria-hidden="true">' + WS.DOW[i] + '</div>';
+    }
+    return html;
   }
 
+  // 1일 앞의 빈칸 (1일이 수요일이면 일·월·화 3칸)
   function leadingSlots() {
-    const n = WS.dowOf(`${month}-01`);
-    return '<div class="ws-cal-day is-empty-slot" aria-hidden="true"></div>'.repeat(n);
+    const n = WS.dowOf(month + '-01');
+    return WS.repeatStr('<div class="ws-cal-day is-empty-slot" aria-hidden="true"></div>', n);
+  }
+
+  function lastDayOfMonth() {
+    const y = Number(month.slice(0, 4));
+    const m = Number(month.slice(5, 7));
+    return WS.daysInMonth(y, m);
   }
 
   function renderSkeleton() {
-    const [y, m] = month.split('-').map(Number);
-    const cells = '<div class="ws-skel ws-cal-skel" aria-hidden="true"></div>'.repeat(WS.daysInMonth(y, m));
+    const cells = WS.repeatStr('<div class="ws-skel ws-cal-skel" aria-hidden="true"></div>', lastDayOfMonth());
     cal.innerHTML = head() + leadingSlots() + cells;
   }
 
+  function dayButton(day) {
+    const n = day.requestCount;
+    const isPast = day.date < today;
+    const isToday = day.date === today;
+
+    let cls = 'ws-cal-day';
+    let note = '';
+    if (isPast) {
+      cls += ' is-past';
+      note = ' 지난 날짜';
+    }
+    if (isToday) {
+      cls += ' is-today';
+      note = ' 오늘';
+    }
+
+    let html = '<button type="button" class="' + cls + '" data-date="' + day.date + '"' +
+      ' aria-label="' + WS.formatDate(day.date) + note + ', 신청 ' + n + '건"';
+    if (isToday) html += ' aria-current="date"';
+    html += '>';
+
+    html += '<span class="ws-cal-num"><span>' + WS.parseISO(day.date).d + '</span>';
+    if (n > 0) html += '<span class="ws-cal-count">' + n + '</span>';
+    html += '</span>';
+
+    if (n > 0 && day.songs[0]) html += '<span class="ws-cal-song"><b>' + esc(day.songs[0].title) + '</b></span>';
+    if (n > 1) html += '<span class="ws-cal-song">외 ' + (n - 1) + '곡</span>';
+
+    html += '</button>';
+    return html;
+  }
+
   function renderDays(days) {
-    const cells = days.map((day) => {
-      const { d } = WS.parseISO(day.date);
-      const isPast = day.date < today;
-      const isToday = day.date === today;
-      const cls = ['ws-cal-day'];
-      if (isPast) cls.push('is-past');
-      if (isToday) cls.push('is-today');
-      const n = day.requestCount;
-      const first = n > 0 && day.songs[0] ? `<span class="ws-cal-song"><b>${esc(day.songs[0].title)}</b></span>` : '';
-      const more = n > 1 ? `<span class="ws-cal-song">외 ${n - 1}곡</span>` : '';
-      const note = isToday ? ' 오늘' : isPast ? ' 지난 날짜' : '';
-      return `<button type="button" class="${cls.join(' ')}" data-date="${day.date}"` +
-        ` aria-label="${WS.formatDate(day.date)}${note}, 신청 ${n}건"${isToday ? ' aria-current="date"' : ''}>` +
-        `<span class="ws-cal-num"><span>${d}</span>${n > 0 ? `<span class="ws-cal-count">${n}</span>` : ''}</span>${first}${more}</button>`;
-    }).join('');
+    let cells = '';
+    for (let i = 0; i < days.length; i++) cells += dayButton(days[i]);
     cal.innerHTML = head() + leadingSlots() + cells;
   }
 
   async function load() {
-    const id = ++reqId;
+    reqId++;
+    const id = reqId;
+
     label.textContent = WS.formatMonth(month);
     cal.setAttribute('aria-label', WS.formatMonth(month));
     cal.setAttribute('aria-busy', 'true');
     errEl.hidden = true;
     renderSkeleton();
+
     try {
       const data = await api.getCalendar(month);
-      if (id !== reqId) return;
+      if (id !== reqId) return; // 그 사이 다른 달로 이동함
       renderDays(data.days);
     } catch (e) {
       if (id !== reqId) return;
@@ -112,18 +147,27 @@
     load();
   }
 
-  document.getElementById('prev').addEventListener('click', () => go(-1));
-  document.getElementById('next').addEventListener('click', () => go(1));
-  cal.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-date]');
-    if (btn) location.href = `date.html?date=${btn.dataset.date}`;
+  document.getElementById('prev').addEventListener('click', function () {
+    go(-1);
   });
-  window.addEventListener('popstate', () => {
+  document.getElementById('next').addEventListener('click', function () {
+    go(1);
+  });
+
+  // 날짜 버튼을 누르면 그날 상세 화면으로
+  cal.addEventListener('click', function (e) {
+    const btn = e.target.closest('button[data-date]');
+    if (btn) location.href = 'date.html?date=' + btn.dataset.date;
+  });
+
+  // 뒤로/앞으로 가기
+  window.addEventListener('popstate', function () {
     month = resolveMonth(WS.param('month'));
     load();
   });
+
   // 페이지를 연 채로 자정을 넘기면 오늘/지난 날짜 표시를 다시 그린다
-  WS.onDayChange((now) => {
+  WS.onDayChange(function (now) {
     today = now;
     load();
   });

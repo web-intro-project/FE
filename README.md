@@ -29,6 +29,18 @@ python3 -m http.server 8000   # → http://localhost:8000
 - `js/common.js` — `<head>`에서 불러온다. 날짜(Asia/Seoul)·이스케이프·공통 렌더 함수, 상단 메뉴 `<ws-nav active="main|request|calendar">`, 자정 넘김 감지 `WS.onDayChange`
 - `js/api.js` — API 클라이언트. 응답 형식은 파일 상단 주석 참고
 
+## 코드 작성 규칙
+
+C 언어에 익숙한 사람도 바로 읽을 수 있도록 쉬운 문법만 쓴다.
+
+- 반복은 `for (let i = 0; i < n; i++)`. `map`·`filter`·`forEach`·`reduce`·`find`·`repeat` 같은 메서드 체인은 쓰지 않는다
+- 함수는 `function` 키워드로 만든다. 화살표 함수(`=>`)는 쓰지 않는다
+- 문자열은 `+`로 잇는다. 템플릿 문자열(`` ` ``)은 쓰지 않는다
+- 구조 분해(`const { a } = obj`), 스프레드(`...`), `Object.fromEntries`, `Set`, `?.`, `??`는 쓰지 않는다
+- 조건이 둘 이상 겹치면 삼항 연산자 대신 `if` / `else`
+- 정규식 대신 글자 단위 검사 (`WS.isValidISO` 참고)
+- 예외: 서버 요청은 `async` / `await`, 상단 메뉴 `<ws-nav>`는 브라우저 규칙상 `class`가 필요해서 그대로 쓴다
+
 ## 백엔드 연결
 
 지금은 `js/api.js`의 `USE_MOCK = true`라서 브라우저 localStorage에 저장하는 목 서버로 동작한다.
