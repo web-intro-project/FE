@@ -37,7 +37,6 @@
 <script>
 (function () {
   const { api, esc, icon } = WS;
-  let today = WS.todayISO();
   const todayEl = document.getElementById('today');
   const weekEl = document.getElementById('week');
 
@@ -88,6 +87,7 @@
   async function loadWeek() {
     weekEl.innerHTML = WS.skelList(2);
     weekEl.setAttribute('aria-busy', 'true');
+    const today = WS.todayISO();
     const start = WS.addDays(today, 1);
     const end = WS.addDays(today, 7);
     const months = [...new Set([WS.monthOf(start), WS.monthOf(end)])];
@@ -109,8 +109,7 @@
   }
 
   // 페이지를 연 채로 자정을 넘기면 새 날짜 기준으로 다시 불러온다
-  WS.onDayChange((now) => {
-    today = now;
+  WS.onDayChange(() => {
     loadToday();
     loadWeek();
   });

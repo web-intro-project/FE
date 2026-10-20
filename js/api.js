@@ -82,7 +82,7 @@
     try { localStorage.setItem(KEY, JSON.stringify(rows)); } catch (e) { /* 무시: 새로고침 시 사라짐 */ }
   }
 
-  let rows = load();
+  const rows = load();
 
   function byDate(date) {
     return rows.filter((r) => r.date === date).sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
@@ -132,16 +132,12 @@
     getRequests: (date) => mock(() => ({ date, requests: byDate(date) })),
 
     createRequest: (body) => mock(() => {
-      const clean = {
-        date: body.date,
-        songTitle: (body.songTitle || '').trim(),
-        artist: (body.artist || '').trim(),
-        applicantName: (body.applicantName || '').trim(),
-      };
+      const clean = Object.fromEntries(WS.FIELDS.map((f) => [f, (body[f] || '').trim()]));
       const err = validate(clean);
       if (err) throw new ApiError(400, err.message, err.field);
-      const row = { id: rows.reduce((max, r) => Math.max(max, r.id), 0) + 1, ...clean, createdAt: new Date().toISOString() };
-      rows = rows.concat(row);
+      const id = Math.max(0, ...rows.map((r) => r.id)) + 1;
+      const row = { id, ...clean, createdAt: new Date().toISOString() };
+      rows.push(row);
       save(rows);
       return row;
     }),

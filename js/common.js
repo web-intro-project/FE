@@ -5,8 +5,6 @@
   const DOW = ['일', '월', '화', '수', '목', '금', '토'];
 
   /* ---------- 날짜 (기준 시간대 Asia/Seoul, API 형식 YYYY-MM-DD) ---------- */
-  function pad(n) { return String(n).padStart(2, '0'); }
-
   function todayISO() {
     // en-CA 형식이 YYYY-MM-DD
     return new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -19,15 +17,13 @@
 
   function isValidISO(iso) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(iso || '')) return false;
-    const { y, m, d } = parseISO(iso);
-    const dt = new Date(Date.UTC(y, m - 1, d));
-    return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+    const dt = new Date(`${iso}T00:00:00Z`);
+    return !isNaN(dt) && dt.toISOString().slice(0, 10) === iso;
   }
 
   function addDays(iso, n) {
     const { y, m, d } = parseISO(iso);
-    const dt = new Date(Date.UTC(y, m - 1, d + n));
-    return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`;
+    return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
   }
 
   function dowOf(iso) {
@@ -41,8 +37,7 @@
 
   function shiftMonth(month, n) {
     const [y, m] = month.split('-').map(Number);
-    const dt = new Date(Date.UTC(y, m - 1 + n, 1));
-    return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}`;
+    return new Date(Date.UTC(y, m - 1 + n, 1)).toISOString().slice(0, 7);
   }
 
   // "10월 21일 수요일"
@@ -62,8 +57,8 @@
     const parts = new Intl.DateTimeFormat('en-GB', {
       timeZone: TZ, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
     }).formatToParts(new Date(ts));
-    const get = (t) => parts.find((p) => p.type === t).value;
-    return `${Number(get('month'))}/${get('day')} ${get('hour')}:${get('minute')}`;
+    const { month, day, hour, minute } = Object.fromEntries(parts.map((p) => [p.type, p.value]));
+    return `${Number(month)}/${day} ${hour}:${minute}`;
   }
 
   /* ---------- 문자열 ---------- */
@@ -109,15 +104,11 @@
   }
 
   /* ---------- StatusMessage ---------- */
-  function errorBanner(title, body, withRetry) {
-    return `<div class="ws-banner ws-banner-error" role="alert">${icon.alert}<div><b>${esc(title)}</b><br>${esc(body)}` +
-      (withRetry ? `<div class="ws-banner-actions"><button type="button" class="ws-btn ws-btn-secondary ws-btn-sm" data-retry>다시 시도</button></div>` : '') +
-      `</div></div>`;
-  }
-
-  // 오류 배너를 그리고 "다시 시도" 버튼을 onRetry에 연결
+  // 오류 배너를 그리고, onRetry가 있으면 "다시 시도" 버튼을 연결
   function showError(el, title, body, onRetry) {
-    el.innerHTML = errorBanner(title, body, !!onRetry);
+    el.innerHTML = `<div class="ws-banner ws-banner-error" role="alert">${icon.alert}<div><b>${esc(title)}</b><br>${esc(body)}` +
+      (onRetry ? `<div class="ws-banner-actions"><button type="button" class="ws-btn ws-btn-secondary ws-btn-sm" data-retry>다시 시도</button></div>` : '') +
+      `</div></div>`;
     if (onRetry) el.querySelector('[data-retry]').addEventListener('click', onRetry);
   }
 
@@ -197,7 +188,7 @@
     onDayChange,
     todayISO, isValidISO, addDays, dowOf, daysInMonth, monthOf, shiftMonth, parseISO,
     formatDate, formatDateFull, formatDateShort, formatMonth, formatTime,
-    esc, param, setParam, icon, errorBanner, showError, emptyState, skelList, requestList, setBusy,
+    esc, param, setParam, icon, showError, emptyState, skelList, requestList, setBusy,
     LIMITS, FIELDS, validateField,
     DOW,
     BROADCAST_TIME: '오전 6:50',

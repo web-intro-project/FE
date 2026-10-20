@@ -18,25 +18,25 @@
       <form class="ws-card ws-form" id="form" novalidate>
         <div id="form-error" hidden></div>
 
-        <div class="ws-field" data-name="date">
+        <div class="ws-field">
           <label class="ws-field-label" for="date"><span>신청 날짜<span class="ws-req" aria-hidden="true">*</span></span></label>
           <input class="ws-input" id="date" name="date" type="date" required aria-describedby="date-help">
           <div class="ws-field-help" id="date-help"><span data-msg></span><span>오늘 이후 날짜만 가능</span></div>
         </div>
 
-        <div class="ws-field" data-name="songTitle">
+        <div class="ws-field">
           <label class="ws-field-label" for="songTitle"><span>곡 제목<span class="ws-req" aria-hidden="true">*</span></span></label>
           <input class="ws-input" id="songTitle" name="songTitle" type="text" maxlength="100" placeholder="예: 밤양갱" required autocomplete="off" aria-describedby="songTitle-help">
           <div class="ws-field-help" id="songTitle-help"><span data-msg></span><span data-count>0/100</span></div>
         </div>
 
-        <div class="ws-field" data-name="artist">
+        <div class="ws-field">
           <label class="ws-field-label" for="artist"><span>가수<span class="ws-req" aria-hidden="true">*</span></span></label>
           <input class="ws-input" id="artist" name="artist" type="text" maxlength="100" placeholder="예: 비비" required autocomplete="off" aria-describedby="artist-help">
           <div class="ws-field-help" id="artist-help"><span data-msg></span><span data-count>0/100</span></div>
         </div>
 
-        <div class="ws-field" data-name="applicantName">
+        <div class="ws-field">
           <label class="ws-field-label" for="applicantName"><span>신청자 이름<span class="ws-req" aria-hidden="true">*</span></span></label>
           <input class="ws-input" id="applicantName" name="applicantName" type="text" maxlength="20" placeholder="이름을 입력해 주세요" required autocomplete="name" aria-describedby="applicantName-help">
           <div class="ws-field-help" id="applicantName-help"><span data-msg></span><span data-count>0/20</span></div>
@@ -74,11 +74,9 @@
   dateInput.value = WS.isValidISO(qDate) && qDate >= today ? qDate : WS.addDays(today, 1);
 
   /* ---------- 필드 오류 표시 ---------- */
-  function fieldEl(name) { return form.querySelector(`.ws-field[data-name="${name}"]`); }
-
   function setError(name, message) {
-    const el = fieldEl(name);
     const input = form.elements[name];
+    const el = input.closest('.ws-field');
     el.querySelector('[data-msg]').textContent = message || '';
     if (message) { el.dataset.invalid = 'true'; input.setAttribute('aria-invalid', 'true'); }
     else { delete el.dataset.invalid; input.removeAttribute('aria-invalid'); }
@@ -92,11 +90,12 @@
   /* ---------- 글자 수 카운터 ---------- */
   ['songTitle', 'artist', 'applicantName'].forEach((name) => {
     const input = form.elements[name];
-    const counter = fieldEl(name).querySelector('[data-count]');
+    const field = input.closest('.ws-field');
+    const counter = field.querySelector('[data-count]');
     input.addEventListener('input', () => {
       // 검사·전송과 같은 기준: 앞뒤 공백 제외
       counter.textContent = `${input.value.trim().length}/${WS.LIMITS[name]}`;
-      if (fieldEl(name).dataset.invalid) setError(name, validateField(name));
+      if (field.dataset.invalid) setError(name, validateField(name));
     });
   });
 
@@ -137,16 +136,11 @@
   });
 
   /* ---------- 제출 ---------- */
-  function showFormError(html) {
-    formError.innerHTML = html;
-    formError.hidden = !html;
-  }
-
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (submitBtn.disabled) return;
     setToday(WS.todayISO()); // 페이지를 오래 열어 둔 경우 제출 시점 날짜로 검사
-    showFormError('');
+    formError.hidden = true;
 
     const body = {};
     let firstInvalid = null;
@@ -170,7 +164,8 @@
         form.elements[err.field].focus();
       } else {
         // 입력값은 지우지 않는다
-        showFormError(WS.errorBanner('신청을 저장하지 못했어요.', '입력한 내용은 그대로 있어요. 잠시 후 다시 시도해 주세요.', false));
+        WS.showError(formError, '신청을 저장하지 못했어요.', '입력한 내용은 그대로 있어요. 잠시 후 다시 시도해 주세요.');
+        formError.hidden = false;
         formError.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }
