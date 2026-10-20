@@ -24,7 +24,7 @@ python3 -m http.server 8000   # → http://localhost:8000
 
 - `css/style.css` — 페이지가 불러오는 유일한 CSS. 폰트와 아래 세 파일을 `@import`
   - `css/tokens.css` — 디자인 토큰 (tokens.json에서 생성)
-  - `css/bundle.css` — 디자인 시스템 컴포넌트 스타일 (원본 그대로, 수정 금지)
+  - `css/bundle.css` — 디자인 시스템 컴포넌트 스타일. 원본에서 줄바꿈·들여쓰기만 정리했고 규칙은 수정 금지
   - `css/app.css` — 보조 스타일 (스켈레톤 등)
 - `js/common.js` — `<head>`에서 불러온다. 날짜(Asia/Seoul)·이스케이프·공통 렌더 함수, 상단 메뉴 `<ws-nav active="main|request|calendar">`, 자정 넘김 감지 `WS.onDayChange`
 - `js/api.js` — API 클라이언트. 응답 형식은 파일 상단 주석 참고
