@@ -64,8 +64,6 @@
   }
 
   let month = resolveMonth(WS.param('month')); // 지금 보고 있는 달 ("YYYY-MM")
-  let reqId = 0; // 마지막 요청 번호. 늦게 도착한 이전 응답은 버린다.
-                 // (◀ 를 빠르게 여러 번 누르면 응답이 뒤죽박죽 도착할 수 있어서)
 
   // 요일 머리글 7칸 HTML. 일요일(0번)만 빨간색(sun 클래스)
   // 요일 머리글은 보이기만 한다. 날짜 버튼의 aria-label에 요일까지 넣어서
@@ -88,9 +86,8 @@
 
   // 지금 보고 있는 달의 마지막 날 (28~31)
   function lastDayOfMonth() {
-    const y = Number(month.slice(0, 4));
-    const m = Number(month.slice(5, 7));
-    return WS.daysInMonth(y, m);
+    const p = WS.parseISO(month + '-01');
+    return WS.daysInMonth(p.y, p.m);
   }
 
   // 불러오는 동안: 날짜 칸 자리에 회색 상자(스켈레톤)를 그 달 일수만큼 깐다
@@ -150,9 +147,10 @@
   }
 
   // 지금 month 의 달력을 불러온다: 제목 갱신 → 스켈레톤 → 서버 요청 → 그리기 (실패 시 오류 배너)
+  // ◀ 를 빠르게 여러 번 누르면 응답이 뒤죽박죽 도착할 수 있다.
+  // 그래서 응답이 왔을 때 아직 같은 달을 보고 있는지(m === month) 확인하고, 아니면 버린다.
   async function load() {
-    reqId++;
-    const id = reqId; // 이번 요청 번호
+    const m = month; // 이번에 요청하는 달
 
     label.textContent = WS.formatMonth(month);          // "2026년 10월"
     cal.setAttribute('aria-label', WS.formatMonth(month));
@@ -161,16 +159,16 @@
     renderSkeleton();
 
     try {
-      const data = await api.getCalendar(month);
-      if (id !== reqId) return; // 그 사이 다른 달로 이동함
+      const data = await api.getCalendar(m);
+      if (m !== month) return; // 그 사이 다른 달로 이동함
       renderDays(data.days);
     } catch (e) {
-      if (id !== reqId) return;
+      if (m !== month) return;
       cal.innerHTML = '';
       WS.showError(errEl, '달력을 불러오지 못했어요.', '잠시 후 다시 시도해 주세요.', load);
       errEl.hidden = false;
     } finally {
-      if (id === reqId) cal.removeAttribute('aria-busy');
+      if (m === month) cal.removeAttribute('aria-busy');
     }
   }
 

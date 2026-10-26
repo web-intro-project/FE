@@ -52,8 +52,10 @@ C 언어에 익숙한 사람도 바로 읽을 수 있도록 쉬운 문법만 쓴
 
 ## 백엔드 연결
 
-지금은 `js/api.js`의 `USE_MOCK = true`라서 브라우저 localStorage에 저장하는 목 서버로 동작한다.
-백엔드가 준비되면 `USE_MOCK = false`, `API_BASE`를 서버 주소로 바꾼다.
+실제 백엔드(`js/api.js`의 `API_BASE = 'http://localhost:8080'`)에 연결한다. 응답 형식은 백엔드 API 명세서를 따른다.
 
-목 모드에서 URL에 `?mockFail=1`을 붙이면 모든 요청이 실패해 오류 화면을 확인할 수 있다.
-목 데이터를 초기화하려면 개발자 도구에서 `localStorage.removeItem('wakesong.requests.v1')`.
+1. 백엔드를 `http://localhost:8080`에서 실행한다
+2. 이 폴더에서 `python3 -m http.server 8000`을 실행하고 `http://localhost:8000`으로 연다
+   (백엔드 CORS가 `localhost:8000`, `127.0.0.1:8000`만 허용하므로 포트 8000을 쓴다)
+
+배포할 때는 `API_BASE`를 배포된 백엔드 주소로 바꾸고, 백엔드의 `CORS_ALLOWED_ORIGINS`에 화면 주소를 추가한다.

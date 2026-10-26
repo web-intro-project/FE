@@ -7,7 +7,7 @@
  *     1) 날짜 계산·표시   (오늘 날짜, n일 뒤, "10월 21일 수요일" 같은 글자 만들기)
  *     2) 문자열·URL 도구  (HTML 특수문자 바꾸기, 주소창 ?date= 읽고 쓰기)
  *     3) 화면 조각 만들기 (오류 배너, 빈 화면 안내, 로딩 스켈레톤, 신청 목록)
- *     4) 입력 검증       (신청 폼과 목 서버가 같은 규칙을 쓰도록)
+ *     4) 입력 검증       (백엔드와 같은 규칙)
  *     5) 상단 메뉴 <ws-nav>
  *
  * 어떻게 쓰나
@@ -32,7 +32,7 @@
   const WS = window.WS || {};
   window.WS = WS;
 
-  const TZ = 'Asia/Seoul';                              // 기준 시간대: 한국
+  const KST = 9 * 60 * 60 * 1000;                       // 한국 시간 = 세계 표준시(UTC) + 9시간 (밀리초). 한국은 서머타임이 없다
   const DOW = ['일', '월', '화', '수', '목', '금', '토']; // 요일 이름. 0 = 일요일 … 6 = 토요일
 
   /* =================================================================
@@ -52,13 +52,17 @@
     return y + '-' + pad2(m) + '-' + pad2(d);
   }
 
+  // 시각(밀리초)에 9시간을 더해 한국 시간으로 옮긴 Date 를 만든다.
+  // 꺼낼 때는 getUTCFullYear() 처럼 getUTC... 로 읽어야 컴퓨터 시간대의 영향을 받지 않는다.
+  function toKST(ms) {
+    return new Date(ms + KST);
+  }
+
   // 오늘 날짜(한국 시간)를 "YYYY-MM-DD"로 돌려준다.
-  // Intl.DateTimeFormat 은 브라우저에 들어 있는 날짜 서식 도구다.
-  // timeZone 을 'Asia/Seoul'로 주면 컴퓨터 시간대와 상관없이 한국 날짜가 나온다.
-  // 'en-CA'(캐나다 영어) 서식이 마침 "YYYY-MM-DD" 모양이라서 그대로 쓴다.
+  // Date.now() = 지금 이 순간 (1970년부터 센 밀리초)
   function todayISO() {
-    const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
-    return fmt.format(new Date()); // new Date() = 지금 이 순간
+    const k = toKST(Date.now());
+    return makeISO(k.getUTCFullYear(), k.getUTCMonth() + 1, k.getUTCDate()); // 월은 0부터 세므로 + 1
   }
 
   // "YYYY-MM-DD" 문자열을 숫자 세 개로 쪼갠다.
@@ -73,22 +77,11 @@
     return { y: y, m: m, d: d };
   }
 
-  // 윤년인지 확인한다. (2월이 29일까지 있는 해)
-  // 규칙: 4로 나누어떨어지면 윤년, 단 100으로 나누어떨어지면 평년,
-  //       그래도 400으로 나누어떨어지면 다시 윤년. (예: 2000년 윤년, 1900년 평년)
-  function isLeapYear(y) {
-    return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
-  }
-
-  // y년 m월이 며칠까지 있는지 돌려준다. (28 / 29 / 30 / 31)
+  // y년 m월이 며칠까지 있는지 돌려준다. (28 / 29 / 30 / 31, 윤년도 알아서 계산된다)
   // 달력 칸 수를 정하거나, "2026-02-30" 같은 없는 날짜를 걸러 낼 때 쓴다.
+  // 월은 0부터 세므로 Date.UTC(y, m, 0) 은 "다음 달의 0일" = "이번 달의 마지막 날"이 된다.
   function daysInMonth(y, m) {
-    if (m === 2) {
-      if (isLeapYear(y)) return 29;
-      return 28;
-    }
-    if (m === 4 || m === 6 || m === 9 || m === 11) return 30; // 30일까지 있는 달
-    return 31;                                                  // 나머지는 31일
+    return new Date(Date.UTC(y, m, 0)).getUTCDate();
   }
 
   // 문자열이 "YYYY-MM-DD" 형식이고, 달력에 실제로 있는 날짜인지 검사한다.
@@ -151,9 +144,8 @@
   // 계산 방법: 연·월을 "0년 1월부터 몇 번째 달인지" 하나의 숫자로 바꾼 뒤
   //           n을 더하고, 다시 12로 나눠 연(몫)과 월(나머지)로 되돌린다.
   function shiftMonth(month, n) {
-    const y = Number(month.slice(0, 4));
-    const m = Number(month.slice(5, 7));
-    const total = y * 12 + (m - 1) + n;  // 0년 1월부터 센 달 수
+    const p = parseISO(month + '-01');
+    const total = p.y * 12 + (p.m - 1) + n; // 0년 1월부터 센 달 수
     const newY = Math.floor(total / 12); // 몫 = 연도
     const newM = total - newY * 12 + 1;  // 나머지 + 1 = 월 (1~12)
     return newY + '-' + pad2(newM);
@@ -180,31 +172,16 @@
 
   // "2026-10" → "2026년 10월"
   function formatMonth(month) {
-    const y = Number(month.slice(0, 4));
-    const m = Number(month.slice(5, 7));
-    return y + '년 ' + m + '월';
+    const p = parseISO(month + '-01');
+    return p.y + '년 ' + p.m + '월';
   }
 
   // 신청 접수 시각(서버가 주는 ISO 타임스탬프)을 "10/18 07:12" 모양으로 바꾼다.
   // 예: "2026-10-17T22:12:00Z"(세계 표준시) → 한국 시간으로 "10/18 07:12"
-  // formatToParts 는 서식 결과를 [{ type: 'month', value: '10' }, { type: 'day', ... }, ...]
-  // 처럼 조각 배열로 돌려준다. 필요한 조각만 골라 원하는 모양으로 다시 붙인다.
+  // Date.parse 는 시각 문자열을 밀리초 숫자로 바꾼다. 월은 앞에 0을 붙이지 않는다 ("9/03")
   function formatTime(ts) {
-    const fmt = new Intl.DateTimeFormat('en-GB', {
-      timeZone: TZ, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
-    });
-    const parts = fmt.formatToParts(new Date(ts));
-
-    let month = '', day = '', hour = '', minute = '';
-    for (let i = 0; i < parts.length; i++) {
-      const part = parts[i];
-      if (part.type === 'month') month = part.value;
-      else if (part.type === 'day') day = part.value;
-      else if (part.type === 'hour') hour = part.value;
-      else if (part.type === 'minute') minute = part.value;
-    }
-    // Number("07") → 7 : 월은 앞의 0을 떼고 보여 준다 ("10/18", "9/03")
-    return Number(month) + '/' + day + ' ' + hour + ':' + minute;
+    const k = toKST(Date.parse(ts));
+    return (k.getUTCMonth() + 1) + '/' + pad2(k.getUTCDate()) + ' ' + pad2(k.getUTCHours()) + ':' + pad2(k.getUTCMinutes());
   }
 
   /* =================================================================
@@ -252,7 +229,7 @@
   }
 
   // 주소창의 쿼리 값 하나를 바꾼다. (페이지를 새로 불러오지 않고 주소만 바뀜)
-  // - 다른 쿼리(예: 테스트용 ?mockFail=1)는 그대로 둔다.
+  // - 다른 쿼리는 그대로 둔다.
   // - value가 빈 값이면 그 쿼리를 아예 지운다.
   // - push가 true  → 방문 기록을 새로 남긴다. (브라우저 "뒤로 가기"로 이전 값에 돌아갈 수 있음)
   //   push가 false → 지금 기록을 덮어쓴다. (뒤로 가기 기록이 쌓이지 않음)
@@ -262,7 +239,7 @@
     if (value) params.set(name, value);
     else params.delete(name);
 
-    const qs = params.toString();   // 예: "date=2026-10-21&mockFail=1"
+    const qs = params.toString();   // 예: "date=2026-10-21"
     let url = location.pathname;    // 쿼리가 하나도 없으면 "?" 없이 경로만
     if (qs) url = '?' + qs;
 
@@ -284,9 +261,9 @@
     alert: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></svg>',                                                  // ! 경고
   };
 
-  /* ---------- 신청 입력 검증 (클라이언트 폼과 목 서버가 같이 쓴다, FR-06) ----------
-   * 신청 폼(request.html)과 가짜 서버(api.js의 목 서버)가 "같은 규칙"으로 검사해야
-   * 화면에서는 통과했는데 서버에서는 거절되는 일이 없다. 그래서 규칙을 여기 한 곳에만 둔다. */
+  /* ---------- 신청 입력 검증 (FR-06) ----------
+   * 백엔드 API 명세서의 검사 규칙·오류 문장과 똑같이 맞춰 둔다.
+   * 화면에서 먼저 걸러 주고, 서버도 같은 규칙으로 한 번 더 검사한다. */
   const LIMITS = { songTitle: 100, artist: 100, applicantName: 20 };                         // 칸별 최대 글자 수
   const FIELD_NAMES = { songTitle: '곡 제목을', artist: '가수를', applicantName: '신청자 이름을' }; // 오류 문장에 들어갈 이름
   const FIELDS = ['date', 'songTitle', 'artist', 'applicantName'];                           // 검사 순서 = 화면 위→아래 순서
@@ -461,7 +438,7 @@
 
   /* =================================================================
    * 내보내기: 다른 파일에서 WS.이름 으로 쓸 수 있게 붙인다.
-   * 여기 없는 함수(pad2, makeISO, isLeapYear 등)는 이 파일 안에서만 쓰는 내부용이다.
+   * 여기 없는 함수(pad2, makeISO, toKST 등)는 이 파일 안에서만 쓰는 내부용이다.
    * ================================================================= */
   // 날짜
   WS.todayISO = todayISO;

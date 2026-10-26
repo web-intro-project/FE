@@ -128,7 +128,7 @@
   }
 
   // name 칸의 현재 값을 검사해서 오류 문장(없으면 '')을 돌려준다.
-  // 규칙은 목 서버와 같은 WS.validateField
+  // 규칙은 백엔드와 같은 WS.validateField
   function validateField(name) {
     return WS.validateField(name, form.elements[name].value, today);
   }
@@ -160,10 +160,8 @@
    * 날짜를 빠르게 여러 번 바꾸면 요청이 여러 개 동시에 나가고, 응답이 순서와 다르게
    * 도착할 수 있다. (예: 21일 요청 → 22일 요청 → 22일 응답 → 21일 응답이 늦게 도착)
    * 그러면 22일을 골랐는데 21일 목록이 보이는 문제가 생긴다.
-   * 그래서 요청마다 번호(sideReq)를 매기고, 가장 마지막 요청의 응답만 화면에 반영한다.
+   * 그래서 응답이 왔을 때 날짜 칸이 아직 그 날짜인지 확인하고, 바뀌었으면 응답을 버린다.
    * ================================================================= */
-  let sideReq = 0; // 마지막 요청 번호. 늦게 도착한 이전 응답은 버린다.
-
   async function loadSide() {
     const date = dateInput.value;
 
@@ -174,15 +172,13 @@
       return;
     }
 
-    sideReq++;
-    const reqId = sideReq; // 이번 요청의 번호를 기억
     sideTitle.textContent = WS.formatDateShort(date) + ' 신청 현황';
     side.setAttribute('aria-busy', 'true');
     side.innerHTML = WS.skelList(3);
 
     try {
       const data = await api.getRequests(date);
-      if (reqId !== sideReq) return; // 그 사이 날짜가 바뀜 → 이 응답은 버린다
+      if (date !== dateInput.value) return; // 그 사이 날짜가 바뀜 → 이 응답은 버린다
       const list = data.requests;
       if (list.length === 0) {
         side.innerHTML = '<p class="ws-card-sub">아직 신청곡이 없어요. 첫 번째로 신청해 보세요.</p>';
@@ -192,11 +188,11 @@
           WS.requestList(list, date === today);
       }
     } catch (e) {
-      if (reqId !== sideReq) return;
+      if (date !== dateInput.value) return;
       // 오른쪽 목록을 못 불러와도 신청 자체는 할 수 있다고 알려 준다
       WS.showError(side, '신청 현황을 불러오지 못했어요.', '신청은 그대로 할 수 있어요.', loadSide);
     } finally {
-      if (reqId === sideReq) side.removeAttribute('aria-busy');
+      if (date === dateInput.value) side.removeAttribute('aria-busy');
     }
   }
 
