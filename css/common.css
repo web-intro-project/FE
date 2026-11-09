@@ -1,0 +1,567 @@
+/* =====================================================================
+ * 기상송 — 모든 페이지가 같이 쓰는 스타일
+ * ---------------------------------------------------------------------
+ * 모든 HTML이 이 파일을 먼저 불러오고, 그다음 자기 페이지 파일(css/pages/*.css)을 불러온다.
+ *   <link rel="stylesheet" href="css/common.css">
+ *   <link rel="stylesheet" href="css/pages/index.css">
+ * 색·간격 같은 값은 tokens.css 의 변수(var(--…))만 쓴다. 클래스 이름은 ws- 로 시작한다.
+ * ===================================================================== */
+
+/* 글꼴 → 디자인 토큰 순서로 불러온다 (@import 는 파일 맨 위에 있어야 한다) */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap");
+@import url("tokens.css");
+
+/* ---------- 기본 ---------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* Fluid spacing: grows with the browser width, capped at wide screens. */
+:root {
+  --ws-content: 1360px; /* max content width */
+  --ws-gutter: clamp(20px, 6vw, 120px); /* page side padding */
+  --ws-section: clamp(40px, 6vw, 112px); /* page top / bottom */
+  --ws-head-gap: clamp(32px, 4.5vw, 72px); /* page title → content */
+  --ws-gap: clamp(20px, 3vw, 48px); /* between cards / columns */
+  --ws-pad: clamp(24px, 3.5vw, 56px); /* inside cards */
+  --ws-field-gap: clamp(20px, 2.2vw, 32px); /* between form fields */
+}
+
+body {
+  margin: 0;
+  background: var(--surface-page);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 26px;
+  -webkit-font-smoothing: antialiased;
+  word-break: keep-all;
+}
+
+/* hidden 속성이 붙은 요소는 어떤 클래스가 있어도 숨긴다 */
+[hidden] {
+  display: none !important;
+}
+
+/* <ws-nav>·<ws-icon>은 껍데기만: 안쪽 요소가 바로 배치되도록 박스를 만들지 않는다 */
+ws-nav,
+ws-icon {
+  display: contents;
+}
+
+/* 작은 회색 글씨 (크기·색만. 여백은 각 클래스에서) */
+.ws-caption,
+.ws-card-sub,
+.ws-today-note,
+.ws-list-sub {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ink-muted);
+}
+
+/* ---------- 레이아웃 ---------- */
+/* 페이지 폭·여백, 제목 영역, 2단 배치 */
+.ws-app {
+  min-height: 100vh;
+  background: var(--surface-page);
+}
+
+.ws-container {
+  width: 100%;
+  max-width: calc(var(--ws-content) + 2 * var(--ws-gutter));
+  margin: 0 auto;
+  padding: 0 var(--ws-gutter);
+}
+
+.ws-page {
+  padding-top: var(--ws-section);
+  padding-bottom: var(--ws-section);
+}
+
+.ws-page-head {
+  margin-bottom: var(--ws-head-gap);
+}
+
+.ws-page-head h1 {
+  margin: 0 0 12px;
+  font-size: clamp(26px, 3vw, 30px);
+  line-height: 1.3;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.ws-page-head p {
+  margin: 0;
+  color: var(--ink-muted);
+}
+
+.ws-page-head-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.ws-page-head-row .ws-badge {
+  margin-bottom: 12px;
+}
+
+.ws-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ws-gap);
+}
+
+.ws-grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: var(--ws-gap);
+  align-items: start;
+}
+
+@media (max-width: 880px) {
+  .ws-grid-2 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- 상단 메뉴 (NavBar) ---------- */
+/* js/common.js 의 <ws-nav> 가 그린다 */
+.ws-nav {
+  background: var(--white);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.ws-nav-inner {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.ws-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.ws-logo-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  background: var(--mint-500);
+  position: relative;
+  overflow: hidden;
+}
+
+.ws-logo-mark::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  right: 5px;
+  bottom: -12px;
+  height: 23px;
+  border-radius: var(--radius-pill);
+  background: var(--white);
+}
+
+.ws-menu {
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  background: var(--surface-page);
+  border-radius: var(--radius-pill);
+}
+
+.ws-menu a {
+  padding: 8px 20px;
+  border-radius: var(--radius-pill);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.ws-menu a:hover {
+  color: var(--ink);
+}
+
+.ws-menu a[aria-current="page"] {
+  background: var(--white);
+  color: var(--mint-700);
+  box-shadow: 0 1px 3px rgba(19, 36, 31, 0.08);
+}
+
+/* ---------- 버튼 (Button) ---------- */
+/* ws-btn + 색(primary / secondary / ghost) + 크기(sm / block) */
+.ws-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 32px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font: 600 16px/22px var(--font-sans);
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+  white-space: nowrap;
+}
+
+.ws-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-focus);
+  border-color: var(--mint-700);
+}
+
+.ws-btn-primary {
+  background: var(--mint-500);
+  color: var(--mint-900);
+}
+
+.ws-btn-primary:hover {
+  background: #33c19c;
+}
+
+.ws-btn-secondary {
+  background: var(--white);
+  color: var(--mint-700);
+  border-color: var(--mint-200);
+}
+
+.ws-btn-secondary:hover {
+  background: var(--mint-50);
+}
+
+.ws-btn-ghost {
+  background: transparent;
+  color: var(--ink-muted);
+}
+
+.ws-btn-ghost:hover {
+  background: var(--mint-50);
+  color: var(--ink);
+}
+
+.ws-btn-sm {
+  height: 40px;
+  padding: 0 20px;
+  font-size: 14px;
+  line-height: 20px;
+  border-radius: var(--radius-sm);
+}
+
+.ws-btn-block {
+  width: 100%;
+}
+
+.ws-btn:disabled {
+  background: var(--mint-100);
+  color: var(--ink-disabled);
+  border-color: transparent;
+  cursor: not-allowed;
+}
+
+/* 제출 중 버튼 안에서 도는 아이콘 (WS.setBusy) */
+.ws-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: ws-spin 0.7s linear infinite;
+}
+
+@keyframes ws-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- 카드 (Card) ---------- */
+/* 흰 배경 + 둥근 모서리 + 그림자 상자 */
+.ws-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: var(--ws-pad);
+}
+
+.ws-card-title {
+  margin: 0 0 20px;
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 700;
+}
+
+.ws-card-text {
+  margin: 0 0 24px;
+  color: var(--ink-muted);
+}
+
+.ws-card-sub {
+  margin: -8px 0 16px;
+}
+
+.ws-card-action {
+  margin-top: 20px;
+}
+
+.ws-card-foot {
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+/* ⓘ 아이콘이 붙은 작은 안내 문구 (메인 오늘 카드, 날짜 상세 카드 아래) */
+.ws-today-note {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 24px 0 0;
+}
+
+/* ---------- 배지 (Badge) ---------- */
+.ws-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  background: var(--mint-100);
+  color: var(--mint-900);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ws-badge-neutral {
+  background: var(--surface-page);
+  color: var(--ink-muted);
+}
+
+/* ---------- 상태 메시지: 오류 배너 · 빈 화면 · 로딩 스켈레톤 ---------- */
+/* js/common.js 의 showError / emptyState / skelList 가 그린다 */
+.ws-banner {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px 20px;
+  border-radius: var(--radius-md);
+  font-size: 15px;
+  line-height: 22px;
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.ws-banner-actions {
+  margin-top: var(--space-3);
+}
+
+.ws-banner .ws-btn {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: var(--white);
+}
+
+.ws-empty {
+  text-align: center;
+  padding: var(--space-8) var(--space-4);
+  color: var(--ink-muted);
+}
+
+.ws-empty-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 24px;
+  border-radius: 50%;
+  background: var(--mint-50);
+  display: grid;
+  place-items: center;
+  color: var(--mint-700);
+}
+
+.ws-empty h3 {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 28px;
+}
+
+.ws-empty p {
+  margin: 0 0 var(--space-6);
+}
+
+/* 스켈레톤: 불러오는 동안 반짝이는 회색 상자. 실제 콘텐츠와 같은 크기 */
+.ws-skel {
+  background: linear-gradient(90deg, var(--surface-page), var(--mint-50), var(--surface-page));
+  background-size: 200% 100%;
+  animation: ws-shimmer 1.2s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes ws-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.ws-skel-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.ws-skel-row {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.ws-skel-order {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+
+.ws-skel-line-title {
+  height: 20px;
+  width: 60%;
+}
+
+.ws-skel-line-sub {
+  height: 16px;
+  width: 40%;
+  margin-top: var(--space-2);
+}
+
+/* 회색 작은 설명 글씨 */
+.ws-caption {
+  margin: 0;
+}
+
+/* ---------- 신청 목록 (RequestList) ---------- */
+/* js/common.js 의 requestList 가 그린다. 메인의 이번 주 목록도 같은 모양 */
+.ws-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ws-list-item {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.ws-list-item:first-child {
+  padding-top: 4px;
+}
+
+.ws-list-item:last-child {
+  border-bottom: 0;
+  padding-bottom: 4px;
+}
+
+.ws-list-order {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-page);
+  color: var(--ink-muted);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.ws-list-item.is-first .ws-list-order {
+  background: var(--mint-500);
+  color: var(--mint-900);
+}
+
+.ws-list-title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ws-list-sub {
+  margin-top: 2px;
+}
+
+.ws-list-time {
+  font-size: 14px;
+  color: var(--ink-muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.ws-list-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.ws-list-body {
+  min-width: 0;
+}
+
+.ws-list-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.ws-list-link:hover .ws-list-title {
+  color: var(--mint-700);
+}
+
+/* ---------- 좁은 화면 (휴대폰): 메뉴, 신청 목록 ---------- */
+@media (max-width: 520px) {
+  .ws-nav-inner {
+    height: 64px;
+  }
+
+  .ws-logo span {
+    display: none;
+  }
+
+  .ws-menu a {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .ws-list-item {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .ws-list-time {
+    display: none;
+  }
+}
