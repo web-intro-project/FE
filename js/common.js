@@ -27,10 +27,9 @@
 // 안에서 만든 변수·함수가 바깥(전역)으로 새어 나가지 않게 감싸는 용도.
 // 바깥에 보여 줄 것만 맨 아래에서 WS 객체에 직접 붙인다.
 (function () {
-  // WS = 이 프로젝트 전용 "이름표 상자". 이미 있으면 그대로 쓰고, 없으면 새로 만든다.
+  // WS = 이 프로젝트 전용 "이름표 상자".
   // window.WS 에 넣어 두면 다른 <script>에서도 WS 로 접근할 수 있다.
-  const WS = window.WS || {};
-  window.WS = WS;
+  window.WS = {};
 
   const KST = 9 * 60 * 60 * 1000;                       // 한국 시간 = 세계 표준시(UTC) + 9시간 (밀리초). 한국은 서머타임이 없다
   const DOW = ['일', '월', '화', '수', '목', '금', '토']; // 요일 이름. 0 = 일요일 … 6 = 토요일
@@ -42,14 +41,13 @@
   // 한 자리 숫자 앞에 0을 붙여 두 자리로 만든다.
   // 예: 7 → "07", 12 → "12"
   function pad2(n) {
-    if (n < 10) return '0' + n;
-    return String(n);
+    return n < 10 ? '0' + n : String(n);
   }
 
-  // 연, 월, 일 숫자 세 개를 "YYYY-MM-DD" 문자열로 합친다.
-  // 예: makeISO(2026, 3, 5) → "2026-03-05"
-  function makeISO(y, m, d) {
-    return y + '-' + pad2(m) + '-' + pad2(d);
+  // Date 를 "YYYY-MM-DD" 문자열로 바꾼다. toISOString() 은 UTC 기준이라 컴퓨터 시간대의 영향을 받지 않는다.
+  // "2026-03-05T00:00:00.000Z" 의 앞 10글자가 날짜다.
+  function toISO(dt) {
+    return dt.toISOString().slice(0, 10);
   }
 
   // 시각(밀리초)에 9시간을 더해 한국 시간으로 옮긴 Date 를 만든다.
@@ -61,8 +59,7 @@
   // 오늘 날짜(한국 시간)를 "YYYY-MM-DD"로 돌려준다.
   // Date.now() = 지금 이 순간 (1970년부터 센 밀리초)
   function todayISO() {
-    const k = toKST(Date.now());
-    return makeISO(k.getUTCFullYear(), k.getUTCMonth() + 1, k.getUTCDate()); // 월은 0부터 세므로 + 1
+    return toISO(toKST(Date.now()));
   }
 
   // "YYYY-MM-DD" 문자열을 숫자 세 개로 쪼갠다.
@@ -71,10 +68,7 @@
   //   위치: 0123456789
   //         2026-10-21
   function parseISO(iso) {
-    const y = Number(iso.slice(0, 4));  // "2026"
-    const m = Number(iso.slice(5, 7));  // "10"
-    const d = Number(iso.slice(8, 10)); // "21"
-    return { y: y, m: m, d: d };
+    return { y: Number(iso.slice(0, 4)), m: Number(iso.slice(5, 7)), d: Number(iso.slice(8, 10)) };
   }
 
   // y년 m월이 며칠까지 있는지 돌려준다. (28 / 29 / 30 / 31, 윤년도 알아서 계산된다)
@@ -102,16 +96,14 @@
     }
 
     // 모양은 맞으니 숫자로 바꿔서 월·일 범위를 확인한다.
+    // 월은 1~12, 일은 그 달의 마지막 날까지
     const p = parseISO(iso);
-    if (p.m < 1 || p.m > 12) return false;                    // 월은 1~12
-    if (p.d < 1 || p.d > daysInMonth(p.y, p.m)) return false; // 일은 그 달의 마지막 날까지
-    return true;
+    return p.m >= 1 && p.m <= 12 && p.d >= 1 && p.d <= daysInMonth(p.y, p.m);
   }
 
   // 문자열이 "YYYY-MM" 형식이고 1~12월인지 검사한다. (달력 화면의 ?month= 검사용)
   // 뒤에 "-01"을 붙여 그 달 1일이 올바른 날짜인지로 대신 확인한다.
   function isValidMonth(month) {
-    if (typeof month !== 'string' || month.length !== 7) return false;
     return isValidISO(month + '-01');
   }
 
@@ -122,8 +114,7 @@
   // UTC(세계 표준시)로 계산하는 이유: 컴퓨터 시간대의 영향을 받지 않게 하려고.
   function addDays(iso, n) {
     const p = parseISO(iso);
-    const dt = new Date(Date.UTC(p.y, p.m - 1, p.d + n));
-    return makeISO(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate());
+    return toISO(new Date(Date.UTC(p.y, p.m - 1, p.d + n)));
   }
 
   // 그 날짜의 요일 번호를 돌려준다. 0 = 일요일 … 6 = 토요일
@@ -146,17 +137,15 @@
   function shiftMonth(month, n) {
     const p = parseISO(month + '-01');
     const total = p.y * 12 + (p.m - 1) + n; // 0년 1월부터 센 달 수
-    const newY = Math.floor(total / 12); // 몫 = 연도
-    const newM = total - newY * 12 + 1;  // 나머지 + 1 = 월 (1~12)
-    return newY + '-' + pad2(newM);
+    const newY = Math.floor(total / 12);    // 몫 = 연도
+    return newY + '-' + pad2(total - newY * 12 + 1); // 나머지 + 1 = 월 (1~12)
   }
 
   /* ---- 화면에 보여 줄 날짜 글자 만들기 ---- */
 
   // "2026-10-21" → "10월 21일 수요일"
   function formatDate(iso) {
-    const p = parseISO(iso);
-    return p.m + '월 ' + p.d + '일 ' + DOW[dowOf(iso)] + '요일';
+    return formatDateShort(iso) + ' ' + DOW[dowOf(iso)] + '요일';
   }
 
   // "2026-10-21" → "2026년 10월 21일 수요일"
@@ -197,19 +186,12 @@
   //   esc() 를 거쳐 "<" → "&lt;" 처럼 "글자로만 보이는" 형태로 바꾼 뒤 넣는다.
   //
   // 예: esc('<b>안녕</b>') → '&lt;b&gt;안녕&lt;/b&gt;' (화면에는 <b>안녕</b> 글자 그대로 보임)
+  const ESC_MAP = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
   function esc(value) {
     if (value === null || value === undefined) return ''; // 값이 없으면 빈 문자열
     const s = String(value);                               // 숫자 등도 문자열로
     let out = '';
-    for (let i = 0; i < s.length; i++) {
-      const c = s[i];
-      if (c === '&') out += '&amp;';
-      else if (c === '<') out += '&lt;';
-      else if (c === '>') out += '&gt;';
-      else if (c === '"') out += '&quot;';
-      else if (c === "'") out += '&#39;';
-      else out += c; // 평범한 글자는 그대로
-    }
+    for (let i = 0; i < s.length; i++) out += ESC_MAP[s[i]] || s[i]; // 평범한 글자는 그대로
     return out;
   }
 
@@ -240,8 +222,7 @@
     else params.delete(name);
 
     const qs = params.toString();   // 예: "date=2026-10-21"
-    let url = location.pathname;    // 쿼리가 하나도 없으면 "?" 없이 경로만
-    if (qs) url = '?' + qs;
+    const url = qs ? '?' + qs : location.pathname; // 쿼리가 하나도 없으면 "?" 없이 경로만
 
     if (push) history.pushState(null, '', url);
     else history.replaceState(null, '', url);
@@ -254,11 +235,19 @@
   /* ---------- 아이콘 (선 아이콘, stroke 2, 둥근 끝) ----------
    * SVG 그림을 문자열로 들고 있다가 HTML 안에 끼워 넣는다.
    * aria-hidden="true" : 화면 낭독기(시각장애인용)가 그림을 읽지 않도록 숨김. */
+  function svg(size, weight, shapes) {
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + weight +
+      '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + shapes + '</svg>';
+  }
+
   const icon = {
-    plus: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',                                                                          // + (신청하기 버튼)
-    music: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>', // 음표
-    info: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',                                                    // ⓘ 안내
-    alert: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/></svg>',                                                  // ! 경고
+    plus: svg(16, 2.4, '<path d="M12 5v14M5 12h14"/>'),                                                       // + (신청하기 버튼)
+    music: svg(16, 2.2, '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>'), // 음표
+    info: svg(16, 2, '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'),                         // ⓘ 안내
+    alert: svg(18, 2, '<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5h.01"/>'),                      // ! 경고
+    prev: svg(18, 2.2, '<path d="M15 18l-6-6 6-6"/>'),                                                        // ‹ 이전, 뒤로 가기
+    next: svg(18, 2.2, '<path d="M9 18l6-6-6-6"/>'),                                                          // › 다음
+    check: svg(36, 2.6, '<path d="M5 12.5l4.5 4.5L19 7.5"/>'),                                                // ✓ 신청 완료
   };
 
   /* ---------- 신청 입력 검증 (FR-06) ----------
@@ -295,30 +284,21 @@
   // 예: WS.showError(listEl, '불러오지 못했어요.', '잠시 후 다시 시도해 주세요.', load);
   // role="alert" : 화면 낭독기가 오류가 생겼다고 바로 읽어 준다.
   function showError(el, title, body, onRetry) {
-    let html = '<div class="ws-banner ws-banner-error" role="alert">' + icon.alert +
-      '<div><b>' + esc(title) + '</b><br>' + esc(body);
-    if (onRetry) {
-      html += '<div class="ws-banner-actions"><button type="button" class="ws-btn ws-btn-secondary ws-btn-sm" data-retry>다시 시도</button></div>';
-    }
-    html += '</div></div>';
-    el.innerHTML = html;
+    const retry = '<div class="ws-banner-actions"><button type="button" class="ws-btn ws-btn-secondary ws-btn-sm" data-retry>다시 시도</button></div>';
+    el.innerHTML = '<div class="ws-banner" role="alert">' + icon.alert +
+      '<div><b>' + esc(title) + '</b><br>' + esc(body) + (onRetry ? retry : '') + '</div></div>';
 
     // 방금 그린 버튼을 찾아서 클릭하면 onRetry 가 불리도록 연결
-    if (onRetry) {
-      el.querySelector('[data-retry]').addEventListener('click', onRetry);
-    }
+    if (onRetry) el.querySelector('[data-retry]').addEventListener('click', onRetry);
   }
 
   // 목록이 비었을 때 보여 줄 안내 화면 HTML을 만든다. (음표 아이콘 + 제목 + 설명)
   // action 에 { href: '이동할 주소', label: '버튼 글자' } 를 넘기면 버튼도 붙인다.
   function emptyState(title, text, action) {
-    let html = '<div class="ws-empty ws-empty-sm"><div class="ws-empty-icon">' + icon.music + '</div>' +
+    let html = '<div class="ws-empty"><div class="ws-empty-icon">' + icon.music + '</div>' +
       '<h3>' + esc(title) + '</h3><p>' + esc(text) + '</p>';
-    if (action) {
-      html += '<a class="ws-btn ws-btn-primary ws-btn-sm" href="' + esc(action.href) + '">' + esc(action.label) + '</a>';
-    }
-    html += '</div>';
-    return html;
+    if (action) html += '<a class="ws-btn ws-btn-primary ws-btn-sm" href="' + esc(action.href) + '">' + esc(action.label) + '</a>';
+    return html + '</div>';
   }
 
   // 데이터를 불러오는 동안 보여 줄 "스켈레톤"(반짝이는 회색 상자) 목록을 rows 줄 만든다.
@@ -345,17 +325,14 @@
       const first = (i === 0);
 
       // 첫 번째 줄은 강조 스타일(is-first)
-      if (first) html += '<li class="ws-list-item is-first">';
-      else html += '<li class="ws-list-item">';
-
+      html += '<li class="ws-list-item' + (first ? ' is-first' : '') + '">';
       html += '<span class="ws-list-order">' + (i + 1) + '</span>'; // 순번 (1부터)
       html += '<div class="ws-list-body"><div class="ws-list-title-row"><span class="ws-list-title">' + esc(r.songTitle) + '</span>';
       if (first && isToday) html += '<span class="ws-badge">오늘의 대표곡</span>';
       html += '</div><div class="ws-list-sub">' + esc(r.artist) + ' · 신청자 ' + esc(r.applicantName) + '</div></div>';
       html += '<span class="ws-list-time">' + esc(formatTime(r.createdAt)) + '</span></li>'; // 접수 시각
     }
-    html += '</ol>';
-    return html;
+    return html + '</ol>';
   }
 
   /* ---------- Button 제출 상태 (FR-07) ----------
@@ -363,13 +340,12 @@
    * 버튼을 여러 번 눌러 같은 신청이 두 번 들어가는 것을 막는 역할도 한다.
    * setBusy(btn, true, '신청 중…') → 잠금,  setBusy(btn, false) → 원래대로 */
   function setBusy(btn, busy, busyLabel) {
+    btn.disabled = busy; // 보내는 동안 클릭 막기
     if (busy) {
       btn.dataset.label = btn.innerHTML; // 원래 글자를 data-label 속성에 기억해 둔다
-      btn.disabled = true;               // 클릭 막기
       btn.innerHTML = '<span class="ws-spinner" aria-hidden="true"></span> ' + esc(busyLabel);
     } else {
-      btn.disabled = false;
-      if (btn.dataset.label) btn.innerHTML = btn.dataset.label; // 기억해 둔 글자로 되돌리기
+      btn.innerHTML = btn.dataset.label; // 기억해 둔 글자로 되돌리기
     }
   }
 
@@ -417,15 +393,12 @@
   // 브라우저가 페이지에서 <ws-nav> 태그를 만나면 connectedCallback() 을 자동으로 불러 준다.
   class WsNav extends HTMLElement {
     connectedCallback() {
-      if (this.firstElementChild) return; // 이미 그렸으면 다시 그리지 않는다
-
       const active = this.getAttribute('active'); // 예: "calendar"
       let links = '';
       for (let i = 0; i < NAV_ITEMS.length; i++) {
         const item = NAV_ITEMS[i];
         // aria-current="page" : 지금 페이지 메뉴라는 표시 (CSS가 이걸 보고 강조색을 칠한다)
-        if (item.key === active) links += '<a href="' + item.href + '" aria-current="page">' + item.label + '</a>';
-        else links += '<a href="' + item.href + '">' + item.label + '</a>';
+        links += '<a href="' + item.href + '"' + (item.key === active ? ' aria-current="page"' : '') + '>' + item.label + '</a>';
       }
 
       this.innerHTML = '<header class="ws-nav"><div class="ws-container ws-nav-inner">' +
@@ -433,12 +406,20 @@
         '<nav class="ws-menu" aria-label="주요 메뉴">' + links + '</nav></div></header>';
     }
   }
-  // 'ws-nav' 태그 이름에 위 class 를 등록한다. (두 번 등록하면 오류가 나므로 먼저 확인)
-  if (!customElements.get('ws-nav')) customElements.define('ws-nav', WsNav);
+  // 'ws-nav' 태그 이름에 위 class 를 등록한다.
+  customElements.define('ws-nav', WsNav);
+
+  // <ws-icon name="plus"></ws-icon> 한 줄이면 위 icon 표의 그림이 그려진다. (SVG를 HTML마다 복사하지 않으려고)
+  class WsIcon extends HTMLElement {
+    connectedCallback() {
+      this.innerHTML = icon[this.getAttribute('name')];
+    }
+  }
+  customElements.define('ws-icon', WsIcon);
 
   /* =================================================================
    * 내보내기: 다른 파일에서 WS.이름 으로 쓸 수 있게 붙인다.
-   * 여기 없는 함수(pad2, makeISO, toKST 등)는 이 파일 안에서만 쓰는 내부용이다.
+   * 여기 없는 함수(pad2, toISO, toKST 등)는 이 파일 안에서만 쓰는 내부용이다.
    * ================================================================= */
   // 날짜
   WS.todayISO = todayISO;
@@ -454,7 +435,6 @@
   WS.formatDateFull = formatDateFull;
   WS.formatDateShort = formatDateShort;
   WS.formatMonth = formatMonth;
-  WS.formatTime = formatTime;
   WS.onDayChange = onDayChange;
   // 문자열·URL
   WS.esc = esc;

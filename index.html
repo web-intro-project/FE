@@ -22,7 +22,7 @@
         <section class="ws-card">
           <h3 class="ws-card-title">내 노래로 일어나고 싶다면</h3>
           <p class="ws-card-text">날짜를 고르고 곡 제목과 가수만 적으면 끝. 로그인은 필요 없어요.</p>
-          <a class="ws-btn ws-btn-primary ws-btn-block" href="request.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> 기상송 신청하기</a>
+          <a class="ws-btn ws-btn-primary ws-btn-block" href="request.html"><ws-icon name="plus"></ws-icon> 기상송 신청하기</a>
         </section>
         <section class="ws-card" aria-labelledby="week-h">
           <h3 class="ws-card-title" id="week-h">이번 주 신청 현황</h3>
@@ -62,7 +62,7 @@
   // aria-busy="true" : 화면 낭독기에게 "아직 불러오는 중"이라고 알린다.
   function todaySkeleton() {
     todayEl.innerHTML =
-      '<section class="ws-today" aria-busy="true" aria-label="오늘의 기상송 불러오는 중">' +
+      '<section class="ws-card ws-today" aria-busy="true" aria-label="오늘의 기상송 불러오는 중">' +
         '<div class="ws-skel ws-skel-badge"></div>' +
         '<div class="ws-skel ws-skel-today-date"></div>' +
         '<div class="ws-skel ws-skel-today-song"></div>' +
@@ -79,7 +79,7 @@
     // 경우 1) 오늘 신청곡이 없을 때 → "오늘 신청곡 없음" + 신청하기 버튼
     if (!data.song) {
       todayEl.innerHTML =
-        '<section class="ws-today ws-today-empty" aria-labelledby="today-h">' +
+        '<section class="ws-card ws-today ws-today-empty" aria-labelledby="today-h">' +
           '<span class="ws-badge ws-badge-neutral">' + icon.music + ' 오늘의 기상송</span>' +
           '<p class="ws-today-date">' + esc(dateLabel) + '</p>' +
           '<h2 class="ws-today-song" id="today-h">오늘 신청곡 없음</h2>' +
@@ -95,7 +95,7 @@
     // (자정 무렵 컴퓨터와 서버의 날짜가 잠깐 다를 수 있기 때문)
     const song = data.song;
     todayEl.innerHTML =
-      '<section class="ws-today" aria-labelledby="today-h">' +
+      '<section class="ws-card ws-today" aria-labelledby="today-h">' +
         '<span class="ws-badge">' + icon.music + ' 오늘의 기상송</span>' +
         '<p class="ws-today-date">' + esc(dateLabel) + ' · ' + esc(WS.BROADCAST_TIME) + '</p>' +
         '<h2 class="ws-today-song" id="today-h">' + esc(song.title) + '</h2>' +
@@ -113,8 +113,7 @@
   async function loadToday() {
     todaySkeleton();
     try {
-      const data = await api.getToday();
-      renderToday(data);
+      renderToday(await api.getToday());
     } catch (e) {
       // 빈 카드 틀을 만들고 그 안에 오류 배너. "다시 시도"를 누르면 loadToday 를 다시 실행
       todayEl.innerHTML = '<section class="ws-card"></section>';
@@ -157,7 +156,7 @@
 
       // 한 건도 없으면 안내 문장만
       if (days.length === 0) {
-        weekEl.innerHTML = '<p class="ws-week-empty">이번 주는 아직 신청곡이 없어요. 첫 번째로 신청해 보세요.</p>';
+        weekEl.innerHTML = '<p class="ws-caption ws-week-empty">이번 주는 아직 신청곡이 없어요. 첫 번째로 신청해 보세요.</p>';
         return; // return 해도 아래 finally 는 실행된다
       }
 
@@ -186,15 +185,16 @@
    * 시작
    * ================================================================= */
 
-  // 페이지를 연 채로 자정을 넘기면 새 날짜 기준으로 다시 불러온다
-  WS.onDayChange(function () {
+  function loadAll() {
     loadToday();
     loadWeek();
-  });
+  }
+
+  // 페이지를 연 채로 자정을 넘기면 새 날짜 기준으로 다시 불러온다
+  WS.onDayChange(loadAll);
 
   // 페이지가 열리면 두 영역을 바로 불러온다
-  loadToday();
-  loadWeek();
+  loadAll();
 })();
 </script>
 </body>

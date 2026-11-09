@@ -35,7 +35,7 @@ python3 -m http.server 8000   # → http://localhost:8000
   - `css/pages/calendar.css` — 캘린더: 달력 칸, 월 이동 버튼, 범례
   - `css/pages/date.css` — 날짜 상세: 뒤로 가기 링크
   - 한 페이지에서만 쓰는 스타일은 그 페이지 파일에, 두 페이지 이상 쓰면 `common.css`에 둔다
-- `js/common.js` — `<head>`에서 불러온다. 날짜(Asia/Seoul)·이스케이프·공통 렌더 함수, 상단 메뉴 `<ws-nav active="main|request|calendar">`, 자정 넘김 감지 `WS.onDayChange`
+- `js/common.js` — `<head>`에서 불러온다. 날짜(Asia/Seoul)·이스케이프·공통 렌더 함수, 상단 메뉴 `<ws-nav active="main|request|calendar">`, 아이콘 `<ws-icon name="plus">`, 자정 넘김 감지 `WS.onDayChange`
 - `js/api.js` — API 클라이언트. 응답 형식은 파일 상단 주석 참고
 
 ## 코드 작성 규칙
@@ -48,7 +48,7 @@ C 언어에 익숙한 사람도 바로 읽을 수 있도록 쉬운 문법만 쓴
 - 구조 분해(`const { a } = obj`), 스프레드(`...`), `Object.fromEntries`, `Set`, `?.`, `??`는 쓰지 않는다
 - 조건이 둘 이상 겹치면 삼항 연산자 대신 `if` / `else`
 - 정규식 대신 글자 단위 검사 (`WS.isValidISO` 참고)
-- 예외: 서버 요청은 `async` / `await`, 상단 메뉴 `<ws-nav>`는 브라우저 규칙상 `class`가 필요해서 그대로 쓴다
+- 예외: 서버 요청은 `async` / `await`, 상단 메뉴 `<ws-nav>`·아이콘 `<ws-icon>`은 브라우저 규칙상 `class`가 필요해서 그대로 쓴다
 
 ## 백엔드 연결
 

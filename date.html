@@ -13,7 +13,7 @@
   <ws-nav active="calendar"></ws-nav>
 
   <main class="ws-container ws-page">
-    <a class="ws-btn ws-btn-ghost ws-btn-sm ws-back" id="back" href="calendar.html"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg> <span id="back-label">캘린더</span></a>
+    <a class="ws-btn ws-btn-ghost ws-btn-sm ws-back" id="back" href="calendar.html"><ws-icon name="prev"></ws-icon> <span id="back-label">캘린더</span></a>
 
     <div class="ws-page-head ws-page-head-row">
       <div>
@@ -21,13 +21,13 @@
         <h1 id="title"></h1>
         <p id="count">신청 목록을 불러오고 있어요.</p>
       </div>
-      <a class="ws-btn ws-btn-primary" id="apply" href="request.html" hidden><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg> 이 날짜로 신청하기</a>
+      <a class="ws-btn ws-btn-primary" id="apply" href="request.html" hidden><ws-icon name="plus"></ws-icon> 이 날짜로 신청하기</a>
       <p class="ws-caption" id="past-note" hidden>지난 날짜는 신청할 수 없어요</p>
     </div>
 
     <section class="ws-card" aria-labelledby="title">
       <div id="list"></div>
-      <p class="ws-today-note ws-card-foot"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> 가장 먼저 접수된 곡을 대표곡으로 보여줘요. 실제 방송곡과 다를 수 있어요.</p>
+      <p class="ws-today-note ws-card-foot"><ws-icon name="info"></ws-icon> 가장 먼저 접수된 곡을 대표곡으로 보여줘요. 실제 방송곡과 다를 수 있어요.</p>
     </section>
   </main>
 </div>
@@ -48,8 +48,7 @@
 
   // 보여 줄 날짜: 주소의 ?date= 가 올바르면 그 날짜, 아니면 오늘
   const qDate = WS.param('date');
-  let date = WS.todayISO();
-  if (WS.isValidISO(qDate)) date = qDate;
+  const date = WS.isValidISO(qDate) ? qDate : WS.todayISO();
 
   const listEl = document.getElementById('list');   // 신청 목록 자리
   const countEl = document.getElementById('count'); // "신청 4건 · 접수 순서대로 보여요." 문구

@@ -73,8 +73,7 @@
  * ===================================================================== */
 (function () {
   const api = WS.api;
-  const FIELDS = WS.FIELDS;                                     // ['date', 'songTitle', 'artist', 'applicantName']
-  const TEXT_FIELDS = ['songTitle', 'artist', 'applicantName']; // 글자 수 카운터가 있는 칸
+  const FIELDS = WS.FIELDS; // ['date', 'songTitle', 'artist', 'applicantName']
 
   // HTML 요소 찾아 두기
   const form = document.getElementById('form');             // 신청 폼 전체
@@ -108,11 +107,16 @@
    *   </div>
    * ================================================================= */
 
+  // name 칸을 감싼 .ws-field 를 찾는다. closest = 위로 올라가며 가장 가까운 것 찾기
+  function fieldOf(name) {
+    return form.elements[name].closest('.ws-field');
+  }
+
   // name 칸에 오류 문장(message)을 띄운다. message 가 빈 값이면 오류 표시를 지운다.
   function setError(name, message) {
     const input = form.elements[name];
-    const field = input.closest('.ws-field'); // closest = 위로 올라가며 가장 가까운 .ws-field 찾기
-    field.querySelector('[data-msg]').textContent = message || '';
+    const field = fieldOf(name);
+    field.querySelector('[data-msg]').textContent = message;
     if (message) {
       field.setAttribute('data-invalid', 'true');  // CSS가 빨간 테두리를 칠한다
       input.setAttribute('aria-invalid', 'true');  // 화면 낭독기에 "잘못된 값" 알림
@@ -120,11 +124,6 @@
       field.removeAttribute('data-invalid');
       input.removeAttribute('aria-invalid');
     }
-  }
-
-  // name 칸에 지금 오류가 떠 있는지
-  function hasError(name) {
-    return form.elements[name].closest('.ws-field').hasAttribute('data-invalid');
   }
 
   // name 칸의 현재 값을 검사해서 오류 문장(없으면 '')을 돌려준다.
@@ -137,21 +136,18 @@
    * 3. 글자 수 카운터 ("3/100")
    * ================================================================= */
   function updateCounter(name) {
-    const input = form.elements[name];
-    const counter = input.closest('.ws-field').querySelector('[data-count]');
+    const field = fieldOf(name);
     // 검사·전송과 같은 기준: 앞뒤 공백 제외
     // (공백까지 세면 "5/20"이라고 보이는데 실제로는 3글자만 저장되는 혼란이 생긴다)
-    counter.textContent = input.value.trim().length + '/' + WS.LIMITS[name];
+    field.querySelector('[data-count]').textContent = form.elements[name].value.trim().length + '/' + WS.LIMITS[name];
     // 오류가 떠 있는 칸은 고치는 즉시 다시 검사 (다 고치면 빨간 표시가 바로 사라진다)
-    if (hasError(name)) setError(name, validateField(name));
+    if (field.hasAttribute('data-invalid')) setError(name, validateField(name));
   }
 
-  // 글자 칸 3개에 "글자를 칠 때마다(input 이벤트) 카운터 갱신"을 연결한다.
-  for (let i = 0; i < TEXT_FIELDS.length; i++) {
-    const name = TEXT_FIELDS[i]; // let/const 는 반복마다 새 변수라서, 아래 함수가 각자 자기 name 을 기억한다
-    form.elements[name].addEventListener('input', function () {
-      updateCounter(name);
-    });
+  // 글자 칸 3개에 "글자를 칠 때마다(input 이벤트) 카운터 갱신"을 연결한다. (i = 1 : 0번 날짜 칸은 카운터가 없다)
+  for (let i = 1; i < FIELDS.length; i++) {
+    const name = FIELDS[i]; // let/const 는 반복마다 새 변수라서, 아래 함수가 각자 자기 name 을 기억한다
+    form.elements[name].addEventListener('input', function () { updateCounter(name); });
   }
 
   /* =================================================================

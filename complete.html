@@ -14,7 +14,7 @@
 
   <main class="ws-container ws-page">
     <section class="ws-card ws-done" id="done" hidden>
-      <div class="ws-done-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <div class="ws-done-icon"><ws-icon name="check"></ws-icon></div>
       <h1 class="ws-done-title">신청이 접수됐어요!</h1>
       <p class="ws-done-text" id="done-text"></p>
       <dl class="ws-summary" id="summary"></dl>
@@ -43,7 +43,7 @@
   try {
     req = JSON.parse(sessionStorage.getItem('wakesong.lastRequest') || 'null');
   } catch (e) {
-    req = null;
+    // 깨져 있으면 null 그대로
   }
 
   // 신청 직후가 아니면(상태 없음) 메인으로

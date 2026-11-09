@@ -22,11 +22,9 @@
 
 .ws-field-label {
   display: flex;
-  justify-content: space-between;
   font-size: 15px;
   line-height: 22px;
   font-weight: 600;
-  color: var(--ink);
 }
 
 .ws-field-label .ws-req {
@@ -60,11 +58,6 @@
   outline: none;
   border-color: var(--mint-700);
   box-shadow: var(--shadow-focus);
-}
-
-.ws-input:disabled {
-  background: var(--surface-page);
-  color: var(--ink-disabled);
 }
 
 .ws-field-help {

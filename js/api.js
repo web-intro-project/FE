@@ -21,11 +21,7 @@
  *   실패하면 throw 로 오류가 던져지므로, 부르는 쪽은 try { ... } catch (e) { ... } 로 받는다.
  * ===================================================================== */
 (function () {
-  // common.js 에서 만든 WS 상자를 그대로 이어서 쓴다.
-  const WS = window.WS || {};
-  window.WS = WS;
-
-  const API_BASE = 'http://localhost:8080'; // ← 백엔드 서버 주소. 배포할 때 그 주소로 바꾼다
+  const API_BASE = 'https://jogging-payback-ramrod.ngrok-free.dev'; // ← 백엔드 서버 주소. 배포할 때 그 주소로 바꾼다
 
   // 오류 객체를 만든다. 기본 Error 에 두 가지 정보를 더 붙인다.
   //   status : HTTP 상태 코드 (0 = 인터넷 연결 실패, 400 = 입력 오류, 500 = 서버 오류 …)
@@ -44,17 +40,23 @@
   // 실패하면 apiError 를 throw 한다.
   async function http(method, path, body) {
     // fetch 에 넘길 설정. 보낼 데이터가 있으면 JSON 문자열로 바꿔 담는다.
-    const options = { method: method };
+    // ngrok-skip-browser-warning : ngrok 무료 플랜이 JSON 대신 경고 페이지를 돌려주지 않게 한다
+    const options = { method: method, headers: { 'ngrok-skip-browser-warning': 'true' } };
     if (body) {
-      options.headers = { 'Content-Type': 'application/json' }; // "JSON 보낸다"고 서버에 알림
-      options.body = JSON.stringify(body);                       // 객체 → JSON 문자열
+      options.headers['Content-Type'] = 'application/json'; // "JSON 보낸다"고 서버에 알림
+      options.body = JSON.stringify(body);                  // 객체 → JSON 문자열
     }
 
     // 요청 보내기. 여기서 실패하면 서버까지 가지도 못한 것(서버 꺼짐, 인터넷 끊김 등)이다.
+    // 개발자 도구(F12) Console 에서 어떤 요청이 오갔는지 볼 수 있게 로그를 남긴다.
+    const url = API_BASE + path;
+    console.log('[API] →', method, url, body || '');
+
     let res;
     try {
-      res = await fetch(API_BASE + path, options);
+      res = await fetch(url, options);
     } catch (e) {
+      console.error('[API] ✕ 서버에 닿지 못함', method, url, e);
       throw apiError(0, '네트워크에 연결하지 못했어요.');
     }
 
@@ -63,17 +65,15 @@
     try {
       data = await res.json();
     } catch (e) {
-      data = null; // 본문이 JSON이 아님 (예: CORS 403 "Invalid CORS request")
+      // 본문이 JSON이 아님 (예: CORS 403 "Invalid CORS request")
     }
+    console.log('[API] ←', res.status, method, url, data);
 
     // res.ok 는 상태 코드가 200~299(성공)일 때 true.
     // 실패면 서버가 보내 준 message / field 를 오류에 담아 던진다. (없으면 기본 문장)
     if (!res.ok) {
-      let message = '요청을 처리하지 못했어요.';
-      let field = null;
-      if (data && data.message) message = data.message;
-      if (data && data.field) field = data.field;
-      throw apiError(res.status, message, field);
+      const info = data || {};
+      throw apiError(res.status, info.message || '요청을 처리하지 못했어요.', info.field);
     }
     return data;
   }
@@ -82,20 +82,12 @@
   // encodeURIComponent : 주소에 넣을 값에 특수문자가 있어도 깨지지 않게 변환한다.
   WS.api = {
     // 오늘의 기상송 (메인 화면 큰 카드)
-    getToday: function () {
-      return http('GET', '/api/today');
-    },
+    getToday: function () { return http('GET', '/api/today'); },
     // 한 달 치 날짜별 신청 요약 (달력 화면, 메인의 "이번 주")
-    getCalendar: function (month) {
-      return http('GET', '/api/calendar?month=' + encodeURIComponent(month));
-    },
+    getCalendar: function (month) { return http('GET', '/api/calendar?month=' + encodeURIComponent(month)); },
     // 하루 치 신청 목록 (날짜 상세, 신청 화면 오른쪽, 완료 화면)
-    getRequests: function (date) {
-      return http('GET', '/api/requests?date=' + encodeURIComponent(date));
-    },
+    getRequests: function (date) { return http('GET', '/api/requests?date=' + encodeURIComponent(date)); },
     // 새 신청 저장 (신청 화면의 "신청하기" 버튼)
-    createRequest: function (body) {
-      return http('POST', '/api/requests', body);
-    },
+    createRequest: function (body) { return http('POST', '/api/requests', body); },
   };
 })();
